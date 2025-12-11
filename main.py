@@ -1,7 +1,4 @@
-"""
-Main CLI Interface for the College Academic Management System.
-Admin portal for managing all aspects of the system.
-"""
+
 
 import sys
 import os
@@ -15,9 +12,7 @@ from teacher_management import TeacherManager
 from fee_management import FeeManager
 from communication import CommunicationManager
 
-
 class CourseManager:
-    """Manages course structures and sections."""
     
     def __init__(self):
         import pickle
@@ -29,27 +24,24 @@ class CourseManager:
             self.courses = {}
     
     def save_courses(self):
-        """Save courses to file."""
         import pickle
         os.makedirs("data", exist_ok=True)
         with open(self.courses_file, "wb") as f:
             pickle.dump(self.courses, f)
     
     def create_course(self, code: str, name: str, description: str = "") -> tuple:
-        """Create a new course."""
         if code in self.courses:
             return False, "Course code already exists"
         
         self.courses[code] = {
             "name": name,
             "description": description,
-            "sections": {}  # year -> {section_num -> {subjects, students}}
+            "sections": {}  
         }
         self.save_courses()
         return True, f"Course {code} created"
     
     def create_section(self, course_code: str, year: int) -> tuple:
-        """Create a section in a course with auto-generated section number."""
         if course_code not in self.courses:
             return False, "Course not found"
         
@@ -60,7 +52,6 @@ class CourseManager:
         if year_str not in self.courses[course_code]["sections"]:
             self.courses[course_code]["sections"][year_str] = {}
         
-        # Auto-generate section number based on existing sections
         existing_sections = self.courses[course_code]["sections"][year_str]
         section_num = len(existing_sections) + 1
         
@@ -68,13 +59,12 @@ class CourseManager:
         self.courses[course_code]["sections"][year_str][section_key] = {
             "subjects": [],
             "students": [],
-            "schedules": []  # List of schedule objects for this section
+            "schedules": []  
         }
         self.save_courses()
         return True, f"Section {section_num} created for {course_code} Year {year}"
     
     def get_section(self, course_code: str, year: int, section_num: int) -> dict:
-        """Get section details."""
         if course_code not in self.courses:
             return None
         
@@ -87,12 +77,12 @@ class CourseManager:
         return self.courses[course_code]["sections"][year_str].get(section_key)
     
     def list_courses(self) -> list:
-        """List all courses."""
+   
         return list(self.courses.items())
     
     def add_subject_to_section(self, course_code: str, year: int, section_num: int,
                               subject: str) -> tuple:
-        """Add subject to a section."""
+      
         section = self.get_section(course_code, year, section_num)
         if section is None:
             return False, "Section not found"
@@ -105,7 +95,7 @@ class CourseManager:
         return True, f"Subject {subject} added to section"
     
     def add_subject_to_year(self, course_code: str, year: int, subject: str) -> tuple:
-        """Add subject to all sections in a year."""
+
         if course_code not in self.courses:
             return False, "Course not found"
         
@@ -128,38 +118,19 @@ class CourseManager:
     
     def check_section_scheduling_conflict(self, course_code: str, year: int, section_num: int,
                                           day: str, start_time: str, end_time: str) -> tuple:
-        """
-        Check if a section has a scheduling conflict.
-        
-        A section cannot have two different subjects at the same time.
-        
-        Args:
-            course_code: Course code (e.g., 'BSIT')
-            year: Year level (1-4)
-            section_num: Section number
-            day: Day of the week
-            start_time: Start time in HH:MM format
-            end_time: End time in HH:MM format
-        
-        Returns:
-            (has_conflict: bool, conflict_message: str)
-            has_conflict=False, message="" means no conflict
-        """
+
         section = self.get_section(course_code, year, section_num)
         if section is None:
             return False, ""
         
-        # Get section schedules if they exist
         schedules = section.get("schedules", [])
         
-        # Convert times to minutes for comparison
         try:
             new_start = int(start_time.split(":")[0]) * 60 + int(start_time.split(":")[1])
             new_end = int(end_time.split(":")[0]) * 60 + int(end_time.split(":")[1])
         except (ValueError, IndexError):
             return False, ""
         
-        # Check for overlaps with existing schedules
         for sched in schedules:
             if sched.get("day") != day:
                 continue
@@ -170,16 +141,13 @@ class CourseManager:
             except (ValueError, IndexError):
                 continue
             
-            # Check for overlap
             if not (new_end <= existing_start or new_start >= existing_end):
                 return True, f"Section has a conflict: {sched.get('subject')} at {sched.get('start_time')}-{sched.get('end_time')} on {day}"
         
         return False, ""
 
-
 class AdminPortal:
-    """Main admin portal with menu system."""
-    
+
     def __init__(self):
         self.student_mgr = StudentManager()
         self.teacher_mgr = TeacherManager()
@@ -191,8 +159,7 @@ class AdminPortal:
         self.admin_username = None
     
     def login(self) -> bool:
-        """Handle admin login."""
-        # Check if first admin exists
+
         if not self.auth.admin_exists():
             print("\n✓ No admin account found. Setting up first admin account...\n")
             success, result = setup_first_admin()
@@ -202,7 +169,6 @@ class AdminPortal:
             self.admin_id = result
             return True
         
-        # Regular login
         self.admin_id = admin_login_prompt()
         
         if self.admin_id is None:
@@ -211,7 +177,7 @@ class AdminPortal:
         return True
     
     def show_main_menu(self):
-        """Display main menu."""
+
         clear_screen()
         print_header("COLLEGE ACADEMIC MANAGEMENT SYSTEM - ADMIN PORTAL")
         print("\n1. Student & Academic Management")
@@ -224,12 +190,11 @@ class AdminPortal:
         print("\n" + "-" * 60)
     
     def get_student_subjects_from_section(self, student_id: str):
-        """Get student's subjects from their enrolled section's curriculum."""
+
         student = self.student_mgr.get_student(student_id)
         if not student:
             return []
         
-        # Parse student's section: COURSE-YEAR-SECTION
         section_parts = student.section.split('-')
         if len(section_parts) != 3:
             return []
@@ -239,7 +204,6 @@ class AdminPortal:
             year = int(section_parts[1])
             section_num = int(section_parts[2])
             
-            # Get section details from course manager
             section = self.course_mgr.get_section(course_code, year, section_num)
             if section is None:
                 return []
@@ -249,7 +213,7 @@ class AdminPortal:
             return []
     
     def student_menu(self):
-        """Student management submenu."""
+
         while True:
             clear_screen()
             print_header("STUDENT & ACADEMIC MANAGEMENT")
@@ -274,7 +238,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def view_all_students_and_manage(self):
-        """View all students with pagination and manage options."""
+
         students = self.student_mgr.list_students()
         
         if not students:
@@ -295,9 +259,6 @@ class AdminPortal:
                 break
             
             if selected is not None:
-                # Convert page-relative index to global index
-                # selected is 0-indexed within current page
-                # Need to account for items on previous pages
                 start_idx = (page - 1) * items_per_page
                 global_idx = start_idx + selected
                 
@@ -305,9 +266,8 @@ class AdminPortal:
                     student_id = students[global_idx].student_id
                     self.student_operations_menu(student_id)
 
-    
     def view_student_details_and_manage(self):
-        """View detailed information about a student and provide management options."""
+
         student_id = safe_string_input("Enter student ID: ")
         if not student_id:
             return
@@ -323,7 +283,7 @@ class AdminPortal:
         self.student_operations_menu(student_id)
     
     def display_student_details(self, student):
-        """Display student details without menu."""
+
         clear_screen()
         print_header(f"STUDENT DETAILS - {student.name}")
         print(f"\nID: {student.student_id}")
@@ -349,7 +309,7 @@ class AdminPortal:
         input("\nPress Enter to continue...")
     
     def student_operations_menu(self, student_id):
-        """Show management options for a selected student."""
+
         student = self.student_mgr.get_student(student_id)
         if not student:
             return
@@ -392,7 +352,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def create_student(self):
-        """Create a new student."""
+
         print_section("CREATE NEW STUDENT")
         
         name = get_full_name()
@@ -415,7 +375,6 @@ class AdminPortal:
             print(f"Name: {name}")
             print(f"Section: {section}")
             
-            # Auto-create parent account
             print("\nParent/Guardian Information:")
             parent_name = get_full_name()
             if not parent_name:
@@ -438,7 +397,7 @@ class AdminPortal:
         input("\nPress Enter to continue...")
     
     def view_all_students(self):
-        """View all students with pagination."""
+
         students = self.student_mgr.list_students()
         
         if not students:
@@ -458,7 +417,7 @@ class AdminPortal:
                 break
     
     def view_student_details(self):
-        """View detailed information about a student."""
+
         student_id = safe_string_input("Enter student ID: ")
         if not student_id:
             return
@@ -495,14 +454,13 @@ class AdminPortal:
         input("\nPress Enter to continue...")
     
     def manage_student_subjects(self, student_id):
-        """View and manage student's subjects from their section curriculum."""
+
         student = self.student_mgr.get_student(student_id)
         if not student:
             print("Student not found.")
             input("Press Enter to continue...")
             return
         
-        # Parse student's section: COURSE-YEAR-SECTION
         section_parts = student.section.split('-')
         if len(section_parts) != 3:
             print("Invalid student section format.")
@@ -513,7 +471,6 @@ class AdminPortal:
         year = int(section_parts[1])
         section_num = int(section_parts[2])
         
-        # Get section details from course manager
         section = self.course_mgr.get_section(course_code, year, section_num)
         if section is None:
             print(f"Section {student.section} not found in course database.")
@@ -579,9 +536,8 @@ class AdminPortal:
                     print(f"\n{'✓' if success else '✗'} {msg}")
                     input("Press Enter to continue...")
 
-    
     def mark_attendance(self, student_id):
-        """Mark student attendance."""
+
         student = self.student_mgr.get_student(student_id)
         if not student:
             print("Student not found.")
@@ -596,7 +552,6 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        # Filter out exempted subjects
         available_subjects = [s for s in subjects if s not in student.exempted_subjects]
         
         if not available_subjects:
@@ -632,7 +587,7 @@ class AdminPortal:
         input("Press Enter to continue...")
     
     def record_grades(self, student_id):
-        """Record student grades and activities."""
+
         student = self.student_mgr.get_student(student_id)
         if not student:
             print("Student not found.")
@@ -646,7 +601,6 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        # Filter out exempted subjects
         available_subjects = [s for s in subjects if s not in student.exempted_subjects]
         
         if not available_subjects:
@@ -705,7 +659,7 @@ class AdminPortal:
                     input("Press Enter to continue...")
     
     def view_grades(self, student_id):
-        """View student grades and GPA."""
+
         student = self.student_mgr.get_student(student_id)
         if not student:
             print("Student not found.")
@@ -722,7 +676,6 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        # Filter out exempted subjects
         available_subjects = [s for s in subjects if s not in student.exempted_subjects]
         
         print("\nSubject Grades:")
@@ -736,7 +689,6 @@ class AdminPortal:
         else:
             print("Student is exempted from all subjects in their section.")
         
-        # GPA calculation only includes non-exempted subjects
         gpa = self.student_mgr.get_gpa(student_id)
         if gpa:
             print(f"\nGPA: {gpa:.2f}")
@@ -746,7 +698,7 @@ class AdminPortal:
         input("\nPress Enter to continue...")
     
     def view_attendance(self, student_id):
-        """View student attendance records."""
+
         student = self.student_mgr.get_student(student_id)
         if not student:
             print("Student not found.")
@@ -763,7 +715,6 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        # Filter out exempted subjects
         available_subjects = [s for s in subjects if s not in student.exempted_subjects]
         
         if not available_subjects:
@@ -797,7 +748,6 @@ class AdminPortal:
             for date, status in attendance:
                 print(f"{date:<15} {status.capitalize():<15}")
             
-            # Show summary
             summary = self.student_mgr.get_attendance_summary(student_id, subject)
             if summary:
                 print("-" * 50)
@@ -806,7 +756,7 @@ class AdminPortal:
         input("\nPress Enter to continue...")
     
     def update_student_info(self, student_id):
-        """Update student information."""
+
         student = self.student_mgr.get_student(student_id)
         if not student:
             print("Student not found.")
@@ -846,7 +796,7 @@ class AdminPortal:
         input("Press Enter to continue...")
     
     def delete_student(self, student_id):
-        """Delete a student."""
+
         student = self.student_mgr.get_student(student_id)
         if not student:
             print("Student not found.")
@@ -864,7 +814,7 @@ class AdminPortal:
         input("Press Enter to continue...")
     
     def teacher_menu(self):
-        """Teacher management submenu."""
+
         while True:
             clear_screen()
             print_header("TEACHER & TIMETABLE MANAGEMENT")
@@ -889,7 +839,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def create_teacher(self):
-        """Create a new teacher."""
+
         print_section("CREATE NEW TEACHER")
         
         name = get_full_name()
@@ -916,7 +866,7 @@ class AdminPortal:
         input("\nPress Enter to continue...")
     
     def view_and_manage_teachers(self):
-        """View all teachers with pagination and show management submenu on selection."""
+
         teachers = self.teacher_mgr.list_teachers()
         
         if not teachers:
@@ -939,11 +889,10 @@ class AdminPortal:
                 teacher_id = teachers[(page - 1) * 9 + selected].teacher_id
                 teacher_deleted = self.teacher_operations_menu(teacher_id)
                 if teacher_deleted:
-                    # Teacher was deleted, go back to teacher menu
                     break
     
     def teacher_operations_menu(self, teacher_id):
-        """Show management menu for a selected teacher. Returns True if teacher was deleted."""
+
         teacher = self.teacher_mgr.get_teacher(teacher_id)
         if not teacher:
             print("Teacher not found.")
@@ -979,17 +928,15 @@ class AdminPortal:
             elif choice == "5":
                 deleted = self.delete_teacher(teacher_id)
                 if deleted:
-                    # Teacher was successfully deleted, return True to indicate deletion
                     return True
             else:
                 print("Invalid option. Please try again.")
                 input("Press Enter to continue...")
         
-        # Return False if we exited normally (without deletion)
         return False
     
     def view_teacher_details_and_manage(self):
-        """View detailed information about a teacher and provide management options."""
+
         teacher_id = safe_string_input("Enter teacher ID: ")
         if not teacher_id:
             return
@@ -1005,7 +952,7 @@ class AdminPortal:
         self.teacher_operations_menu(teacher_id)
     
     def display_teacher_details(self, teacher):
-        """Display teacher details without menu."""
+
         clear_screen()
         print_header(f"TEACHER DETAILS - {teacher.name}")
         print(f"\nID: {teacher.teacher_id}")
@@ -1023,7 +970,7 @@ class AdminPortal:
         input("\nPress Enter to continue...")
     
     def view_all_teachers(self):
-        """View all teachers."""
+
         teachers = self.teacher_mgr.list_teachers()
         
         if not teachers:
@@ -1043,7 +990,7 @@ class AdminPortal:
                 break
     
     def view_teacher_details(self, teacher_id=None):
-        """View detailed information about a teacher."""
+
         if teacher_id is None:
             teacher_id = safe_string_input("Enter teacher ID: ")
         if not teacher_id:
@@ -1073,7 +1020,7 @@ class AdminPortal:
         input("\nPress Enter to continue...")
     
     def view_teacher_subjects_from_schedule(self, teacher_id=None):
-        """View subjects taught by a teacher based on their assigned schedules."""
+
         if teacher_id is None:
             teacher_id = safe_string_input("Enter teacher ID: ")
         if not teacher_id:
@@ -1085,7 +1032,6 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        # Collect all unique subjects from assigned schedules
         subjects_set = set()
         for section in teacher.class_sessions:
             schedules = self.teacher_mgr.get_schedules(teacher_id, section)
@@ -1106,7 +1052,7 @@ class AdminPortal:
         input("\nPress Enter to continue...")
     
     def manage_teacher_subjects(self, teacher_id=None):
-        """Manage subjects taught by a teacher."""
+
         if teacher_id is None:
             teacher_id = safe_string_input("Enter teacher ID: ")
         if not teacher_id:
@@ -1146,7 +1092,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def assign_section_to_teacher(self):
-        """Assign a section to a teacher."""
+
         teacher_id = safe_string_input("Enter teacher ID: ")
         if not teacher_id:
             return
@@ -1165,7 +1111,7 @@ class AdminPortal:
         input("Press Enter to continue...")
     
     def manage_class_schedule(self, teacher_id=None):
-        """Manage class schedules for a teacher."""
+
         if teacher_id is None:
             teacher_id = safe_string_input("Enter teacher ID: ")
         if not teacher_id:
@@ -1190,12 +1136,10 @@ class AdminPortal:
             if choice == "0":
                 break
             elif choice == "1":
-                # Add schedule directly - section will be auto-initialized
                 section = safe_string_input("Section (COURSE-YEAR-SECTION, e.g., BSIT-3-1): ")
                 if not section:
                     continue
                 
-                # Parse section to get subjects
                 section_parts = section.split("-")
                 if len(section_parts) != 3:
                     print("\n✗ Invalid section format. Use COURSE-YEAR-SECTION (e.g., BSIT-3-1)")
@@ -1211,7 +1155,6 @@ class AdminPortal:
                     input("Press Enter to continue...")
                     continue
                 
-                # Get subjects from course manager
                 section_obj = self.course_mgr.get_section(course_code, year, section_num)
                 if section_obj is None:
                     print(f"\n✗ Section {section} not found.")
@@ -1224,7 +1167,6 @@ class AdminPortal:
                     input("Press Enter to continue...")
                     continue
                 
-                # Display available subjects
                 clear_screen()
                 print_header(f"SELECT SUBJECT - {section}")
                 print("\nAvailable Subjects:")
@@ -1266,7 +1208,6 @@ class AdminPortal:
                 if not room:
                     continue
                 
-                # Check for section scheduling conflicts
                 has_conflict, conflict_msg = self.course_mgr.check_section_scheduling_conflict(
                     course_code, year, section_num, day, start_time, end_time
                 )
@@ -1278,7 +1219,6 @@ class AdminPortal:
                 success, msg = self.teacher_mgr.add_schedule(teacher_id, section, subject,
                                                              day, start_time, end_time, room)
                 if success:
-                    # Add schedule to section as well
                     section_obj = self.course_mgr.get_section(course_code, year, section_num)
                     if section_obj:
                         if "schedules" not in section_obj:
@@ -1296,7 +1236,6 @@ class AdminPortal:
                 input("Press Enter to continue...")
             
             elif choice == "2":
-                # View schedules for this teacher
                 sections = self.teacher_mgr.get_sections(teacher_id)
                 if not sections:
                     print(f"\n{teacher.name} has no schedules yet.")
@@ -1339,12 +1278,10 @@ class AdminPortal:
                             elif action == "1":
                                 idx = safe_int_input("Select schedule to remove: ", 1, len(schedules))
                                 if idx:
-                                    # Get the schedule details before removing
                                     schedule_to_remove = schedules[idx - 1]
                                     
                                     success, msg = self.teacher_mgr.remove_schedule(teacher_id, section, idx - 1)
                                     if success:
-                                        # Also remove from section
                                         section_parts = section.split("-")
                                         if len(section_parts) == 3:
                                             try:
@@ -1353,7 +1290,6 @@ class AdminPortal:
                                                 section_num = int(section_num)
                                                 section_obj = self.course_mgr.get_section(course_code, year, section_num)
                                                 if section_obj and "schedules" in section_obj:
-                                                    # Remove matching schedule from section
                                                     section_obj["schedules"] = [
                                                         s for s in section_obj["schedules"]
                                                         if not (s.get("subject") == schedule_to_remove.subject and
@@ -1374,7 +1310,7 @@ class AdminPortal:
                             break
     
     def update_teacher_info(self, teacher_id=None):
-        """Update teacher information."""
+
         if teacher_id is None:
             teacher_id = safe_string_input("Enter teacher ID: ")
         if not teacher_id:
@@ -1406,7 +1342,7 @@ class AdminPortal:
         input("Press Enter to continue...")
     
     def delete_teacher(self, teacher_id=None):
-        """Delete a teacher. Returns True if successfully deleted, False otherwise."""
+
         if teacher_id is None:
             teacher_id = safe_string_input("Enter teacher ID to delete: ")
         if not teacher_id:
@@ -1431,7 +1367,7 @@ class AdminPortal:
             return False
     
     def fee_menu(self):
-        """Fee & Finance management submenu."""
+
         while True:
             clear_screen()
             print_header("FEE & FINANCE MANAGEMENT")
@@ -1471,7 +1407,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def manage_particulars(self):
-        """Manage fee particulars (library, athletics, etc.)."""
+
         while True:
             clear_screen()
             print_header("MANAGE PARTICULARS")
@@ -1538,7 +1474,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def manage_fee_structures(self):
-        """Manage fee structures by COURSE-YEAR."""
+
         while True:
             clear_screen()
             print_header("FEE STRUCTURES (by COURSE-YEAR)")
@@ -1562,7 +1498,6 @@ class AdminPortal:
                 if year is None:
                     continue
                 
-                # Validate that the course code and year exist in the system
                 section = self.course_mgr.get_section(course_code, year, 1)
                 if section is None:
                     print(f"\n✗ Error: Course {course_code} Year {year} does not exist in the system.")
@@ -1617,7 +1552,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def configure_fee_structure(self, course_code: str, year: int):
-        """Configure a fee structure with subjects and particulars."""
+
         fee_structure = self.fee_mgr.get_fee_structure(course_code, year)
         if fee_structure is None:
             print("Fee structure not found.")
@@ -1628,7 +1563,6 @@ class AdminPortal:
             clear_screen()
             print_header(f"CONFIGURE FEE STRUCTURE - {course_code}-{year}")
             
-            # Get section to list subjects
             section = self.course_mgr.get_section(course_code, year, 1)
             if section is None:
                 print(f"Section {course_code}-{year} not found in course system.")
@@ -1732,7 +1666,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def generate_enrollment_invoice_for_section(self):
-        """Generate invoices for all students in a specific section (e.g., BSIT-1-1)."""
+
         course_code = safe_string_input("Course code (e.g., BSIT): ")
         if not course_code:
             return
@@ -1745,17 +1679,14 @@ class AdminPortal:
         if section_num is None:
             return
         
-        # Verify the section exists
         section = self.course_mgr.get_section(course_code, year, section_num)
         if section is None:
             print(f"Section {course_code}-{year}-{section_num} not found.")
             input("Press Enter to continue...")
             return
         
-        # Build the section key to match student.section format
         section_key = f"{course_code}-{year}-{section_num}"
         
-        # Get all students in this section
         students_in_section = self.student_mgr.get_students_by_section(section_key)
         
         if not students_in_section:
@@ -1763,7 +1694,6 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        # Get fee structure for the COURSE-YEAR
         fee_structure = self.fee_mgr.get_fee_structure(course_code, year)
         if fee_structure is None:
             print(f"No fee structure defined for {course_code}-{year}.")
@@ -1778,7 +1708,6 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        # Show summary
         clear_screen()
         print_header(f"GENERATE INVOICES - {section_key}")
         print(f"\nNumber of students: {len(students_in_section)}")
@@ -1814,7 +1743,7 @@ class AdminPortal:
         input("Press Enter to continue...")
     
     def create_custom_invoice(self):
-        """Create a custom invoice for a single student or entire section."""
+
         while True:
             clear_screen()
             print_header("CREATE CUSTOM INVOICE")
@@ -1836,7 +1765,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def create_custom_invoice_single_student(self):
-        """Create a custom invoice for a single student."""
+
         student_id = safe_string_input("Enter student ID: ")
         if not student_id:
             return
@@ -1850,7 +1779,6 @@ class AdminPortal:
         clear_screen()
         print_header(f"CREATE CUSTOM INVOICE - {student.name}")
         
-        # Get amount and description
         amount = safe_int_input("Invoice amount ($): ", 1)
         if amount is None:
             return
@@ -1860,7 +1788,6 @@ class AdminPortal:
         if not due_date:
             return
         
-        # Show summary
         print(f"\nInvoice Summary:")
         print(f"Student: {student.name} ({student_id})")
         print(f"Amount: ${float(amount):.2f}")
@@ -1874,7 +1801,6 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        # Create invoice using fee manager
         from fee_management import Invoice
         invoice_id = f"INV-{student_id}-{len(self.fee_mgr.invoices) + 1}"
         invoice = Invoice(invoice_id, student_id, "CUSTOM", 0, float(amount), due_date)
@@ -1888,7 +1814,7 @@ class AdminPortal:
         input("Press Enter to continue...")
     
     def create_custom_invoice_section(self):
-        """Create a custom invoice for all students in a section."""
+
         course_code = safe_string_input("Course code (e.g., BSIT): ")
         if not course_code:
             return
@@ -1901,14 +1827,12 @@ class AdminPortal:
         if section_num is None:
             return
         
-        # Verify the section exists
         section = self.course_mgr.get_section(course_code, year, section_num)
         if section is None:
             print(f"Section {course_code}-{year}-{section_num} not found.")
             input("Press Enter to continue...")
             return
         
-        # Get all students in this section
         section_key = f"{course_code}-{year}-{section_num}"
         students_in_section = self.student_mgr.get_students_by_section(section_key)
         
@@ -1920,7 +1844,6 @@ class AdminPortal:
         clear_screen()
         print_header(f"CREATE CUSTOM INVOICE - {section_key}")
         
-        # Get amount and description
         amount = safe_int_input("Invoice amount per student ($): ", 1)
         if amount is None:
             return
@@ -1930,7 +1853,6 @@ class AdminPortal:
         if not due_date:
             return
         
-        # Show summary
         print(f"\nInvoice Summary:")
         print(f"Section: {section_key}")
         print(f"Number of students: {len(students_in_section)}")
@@ -1946,7 +1868,6 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        # Create invoices for all students
         from fee_management import Invoice
         invoice_ids = []
         
@@ -1965,7 +1886,7 @@ class AdminPortal:
         input("Press Enter to continue...")
     
     def _record_payment_for_invoice(self, invoice):
-        """Helper method to record payment for a specific invoice."""
+
         invoice_id = invoice.invoice_id
         
         clear_screen()
@@ -1976,7 +1897,6 @@ class AdminPortal:
             print(f"Course-Year: {invoice.course_code}-{invoice.year}")
         print(f"Amount Due: ${invoice.amount:.2f}")
         
-        # Display breakdown if available
         if invoice.breakdown:
             print(f"\nBreakdown:")
             for item, amount in invoice.breakdown.items():
@@ -1997,7 +1917,6 @@ class AdminPortal:
         if amount is None:
             return
         
-        # Validate payment amount does not exceed remaining balance
         if float(amount) > remaining:
             print(f"\n✗ Error: Payment amount (${float(amount):.2f}) exceeds remaining balance (${remaining:.2f})")
             input("Press Enter to continue...")
@@ -2014,7 +1933,7 @@ class AdminPortal:
         input("Press Enter to continue...")
     
     def record_payment(self):
-        """Record a payment for an invoice."""
+
         invoice_id = safe_string_input("Enter invoice ID: ")
         if not invoice_id:
             return
@@ -2031,7 +1950,6 @@ class AdminPortal:
             print(f"Course-Year: {invoice.course_code}-{invoice.year}")
         print(f"Amount Due: ${invoice.amount:.2f}")
         
-        # Display breakdown if available
         if invoice.breakdown:
             print(f"\nBreakdown:")
             for item, amount in invoice.breakdown.items():
@@ -2052,7 +1970,6 @@ class AdminPortal:
         if amount is None:
             return
         
-        # Validate payment amount does not exceed remaining balance
         if float(amount) > remaining:
             print(f"\n✗ Error: Payment amount (${float(amount):.2f}) exceeds remaining balance (${remaining:.2f})")
             input("Press Enter to continue...")
@@ -2069,7 +1986,7 @@ class AdminPortal:
         input("Press Enter to continue...")
     
     def view_invoices(self):
-        """View and manage invoices."""
+
         while True:
             clear_screen()
             print_header("VIEW INVOICES")
@@ -2101,7 +2018,6 @@ class AdminPortal:
                     input("Press Enter to continue...")
                     continue
                 
-                # Paginate invoices (9 per page)
                 page = 0
                 page_size = 9
                 
@@ -2109,7 +2025,6 @@ class AdminPortal:
                     clear_screen()
                     print_header(f"INVOICES - {student.name}")
                     
-                    # Calculate pagination
                     total_pages = (len(invoices) + page_size - 1) // page_size
                     start_idx = page * page_size
                     end_idx = min(start_idx + page_size, len(invoices))
@@ -2118,7 +2033,6 @@ class AdminPortal:
                     print(f"\nPage {page + 1}/{total_pages} - Showing {len(page_invoices)} of {len(invoices)} invoices\n")
                     print("-" * 70)
                     
-                    # Display invoices with numbers 1-9
                     for idx, inv in enumerate(page_invoices, 1):
                         if inv.course_code != "CUSTOM":
                             print(f"\n[{idx}] {inv.invoice_id} ({inv.course_code}-{inv.year})")
@@ -2126,7 +2040,6 @@ class AdminPortal:
                             print(f"\n[{idx}] {inv.invoice_id}")
                         print(f"     Amount: ${inv.amount:.2f}")
                         
-                        # Display breakdown
                         if inv.breakdown:
                             print(f"     Breakdown:")
                             for item, amount in inv.breakdown.items():
@@ -2142,8 +2055,7 @@ class AdminPortal:
                     
                     print("\n")
                     print(f"[Page {page + 1}/{total_pages}] (w: next, q: prev, 0: back, 1-{len(page_invoices)}: select)")
-                    
-                    
+
                     choice = safe_string_input("\nSelect invoice or command: ").strip().upper()
                     
                     if choice == "0":
@@ -2161,15 +2073,13 @@ class AdminPortal:
                             print("Already on last page.")
                             input("Press Enter to continue...")
                     elif choice in [str(i) for i in range(1, len(page_invoices) + 1)]:
-                        # Record payment for selected invoice
                         selected_idx = int(choice) - 1
                         selected_invoice = page_invoices[selected_idx]
                         self._record_payment_for_invoice(selected_invoice)
                     else:
                         print("Invalid selection.")
                         input("Press Enter to continue...")
-            
-            
+
             elif choice == "2":
                 course_code = safe_string_input("\nCourse code: ")
                 if not course_code:
@@ -2231,7 +2141,7 @@ class AdminPortal:
                 input("\nPress Enter to continue...")
     
     def manage_payroll(self):
-        """Manage teacher payroll."""
+
         while True:
             clear_screen()
             print_header("PAYROLL MANAGEMENT")
@@ -2265,7 +2175,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def manage_teachers_payrolls(self):
-        """Manage payroll for individual teachers (paginated view)."""
+
         teachers = self.teacher_mgr.list_teachers()
         
         if not teachers:
@@ -2280,7 +2190,6 @@ class AdminPortal:
             clear_screen()
             print_header("MANAGE TEACHERS PAYROLLS")
             
-            # Calculate pagination
             total_pages = (len(teachers) + page_size - 1) // page_size
             start_idx = page * page_size
             end_idx = min(start_idx + page_size, len(teachers))
@@ -2289,13 +2198,11 @@ class AdminPortal:
             print(f"\nPage {page + 1}/{total_pages} - Showing {len(page_teachers)} of {len(teachers)} teachers\n")
             print("-" * 90)
             
-            # Display teachers with numbers 1-9
             for idx, teacher in enumerate(page_teachers, 1):
                 teacher_payroll = self.fee_mgr.get_teacher_all_payroll(teacher.teacher_id)
                 print(f"\n[{idx}] {teacher.name} ({teacher.teacher_id})")
                 print(f"     Email: {teacher.email}")
                 
-                # Get subjects from schedules (same as View Subjects)
                 subjects_set = set()
                 for section in teacher.class_sessions:
                     schedules = self.teacher_mgr.get_schedules(teacher.teacher_id, section)
@@ -2303,7 +2210,6 @@ class AdminPortal:
                         for sched in schedules:
                             subjects_set.add(sched.subject)
                 
-                # Show subjects and their pay rates
                 if subjects_set:
                     subjects_info = []
                     for subject in sorted(subjects_set):
@@ -2349,7 +2255,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def manage_teacher_payout(self, teacher_id: str):
-        """Show options menu for a selected teacher (view summary or process payout)."""
+
         teacher = self.teacher_mgr.get_teacher(teacher_id)
         if not teacher:
             print("Teacher not found.")
@@ -2360,7 +2266,6 @@ class AdminPortal:
             clear_screen()
             print_header(f"TEACHER PAYROLL - {teacher.name}")
             
-            # Get subjects from schedules
             subjects_set = set()
             for section in teacher.class_sessions:
                 schedules = self.teacher_mgr.get_schedules(teacher_id, section)
@@ -2370,12 +2275,10 @@ class AdminPortal:
             
             subjects = sorted(list(subjects_set))
             
-            # Show basic info
             print(f"\nTeacher ID: {teacher_id}")
             print(f"Email: {teacher.email}")
             print(f"Phone: {teacher.phone}")
             
-            # Show subjects
             print(f"\nSubjects & Pay Rates:")
             if subjects:
                 for subject in subjects:
@@ -2387,7 +2290,6 @@ class AdminPortal:
             else:
                 print("  (none assigned)")
             
-            # Show payroll records
             payroll_records = self.fee_mgr.get_teacher_all_payroll(teacher_id)
             print(f"\nPayroll Records: {len(payroll_records)}")
             if payroll_records:
@@ -2412,8 +2314,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def process_teacher_payout(self, teacher_id: str, teacher):
-        """Process payout for a specific teacher."""
-        # Get subjects from schedules
+
         subjects_set = set()
         for section in teacher.class_sessions:
             schedules = self.teacher_mgr.get_schedules(teacher_id, section)
@@ -2427,38 +2328,32 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        # Get payout period
         payout_period = safe_string_input("\nPayout period (YYYY-MM-A or YYYY-MM-B): ")
         if not payout_period or payout_period[-1] not in ['A', 'B']:
             print("Invalid format. Use YYYY-MM-A or YYYY-MM-B")
             input("Press Enter to continue...")
             return
         
-        # Check if already paid
         existing = self.fee_mgr.get_teacher_payroll_by_period(teacher_id, payout_period)
         if existing:
             print(f"Payroll already exists for {payout_period}")
             input("Press Enter to continue...")
             return
         
-        # Create payroll record
         success, payroll_id = self.fee_mgr.create_teacher_payroll(teacher_id, payout_period)
         if not success:
             print(f"✗ Error: {payroll_id}")
             input("Press Enter to continue...")
             return
         
-        # Get days present
         days_present = safe_int_input("Days present (0-14): ", 0, 14)
         if days_present is None:
             return
         
-        # Get overtime hours
         overtime = safe_int_input("Overtime hours (0 if none): ", 0)
         if overtime is None:
             return
         
-        # Select bonuses
         bonuses = self.fee_mgr.list_bonuses()
         selected_bonus_ids = []
         
@@ -2477,7 +2372,6 @@ class AdminPortal:
                 except:
                     print("Invalid bonus selection.")
         
-        # Calculate payroll with all subjects
         success, msg = self.fee_mgr.calculate_payroll(
             payroll_id, days_present, subjects, selected_bonus_ids, float(overtime)
         )
@@ -2487,7 +2381,6 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        # Show breakdown
         clear_screen()
         print_header(f"PAYROLL BREAKDOWN")
         
@@ -2515,7 +2408,6 @@ class AdminPortal:
             
             print(f"\nNet Salary: ${breakdown['net_salary']:.2f}")
         
-        # Confirm and finalize
         confirm = safe_string_input("\nConfirm payout? (yes/no): ")
         if confirm and confirm.lower() == "yes":
             success, msg = self.fee_mgr.finalize_payroll(payroll_id)
@@ -2527,7 +2419,7 @@ class AdminPortal:
         input("Press Enter to continue...")
     
     def view_teacher_payroll_summary(self, teacher_id: str):
-        """View summary and options for a teacher's payroll."""
+
         teacher = self.teacher_mgr.get_teacher(teacher_id)
         if not teacher:
             print("Teacher not found.")
@@ -2537,14 +2429,12 @@ class AdminPortal:
         clear_screen()
         print_header(f"PAYROLL SUMMARY - {teacher.name}")
         
-        # Get teacher's payroll records
         payroll_records = self.fee_mgr.get_teacher_all_payroll(teacher_id)
         
         print(f"\nTeacher ID: {teacher_id}")
         print(f"Email: {teacher.email}")
         print(f"Phone: {teacher.phone}")
         
-        # Get subjects from schedules (same as View Subjects)
         subjects_set = set()
         for section in teacher.class_sessions:
             schedules = self.teacher_mgr.get_schedules(teacher_id, section)
@@ -2552,7 +2442,6 @@ class AdminPortal:
                 for sched in schedules:
                     subjects_set.add(sched.subject)
         
-        # Show subjects and their pay rates
         print(f"\nSubjects & Pay Rates:")
         if subjects_set:
             for subject in sorted(subjects_set):
@@ -2564,7 +2453,6 @@ class AdminPortal:
         else:
             print("  (No subjects assigned)")
         
-        # Show earnings configuration
         print(f"\nEarnings Configuration:")
         earnings_config = self.fee_mgr.earnings_config
         print(f"  Base Salary: ${earnings_config.base_salary:.2f}")
@@ -2574,7 +2462,6 @@ class AdminPortal:
             for bonus in earnings_config.bonuses.values():
                 print(f"    - {bonus.name}: ${bonus.amount:.2f}")
         
-        # Show deductions configuration
         print(f"\nDeductions Configuration:")
         deduction_config = self.fee_mgr.deduction_config
         print(f"  Tax Rate: {deduction_config.tax_rate}%")
@@ -2595,7 +2482,7 @@ class AdminPortal:
         input("\nPress Enter to continue...")
     
     def manage_workloads(self):
-        """Manage subject workload pay rates."""
+
         while True:
             clear_screen()
             print_header("MANAGE WORKLOADS (Subject Pay Rates)")
@@ -2609,7 +2496,6 @@ class AdminPortal:
             if choice == "0":
                 break
             elif choice == "1":
-                # Get all available subjects from courses
                 courses = self.course_mgr.list_courses()
                 available_subjects = set()
                 
@@ -2624,7 +2510,6 @@ class AdminPortal:
                     input("Press Enter to continue...")
                     continue
                 
-                # Display available subjects
                 available_subjects = sorted(list(available_subjects))
                 print(f"\nAvailable Subjects ({len(available_subjects)}):")
                 for i, subj in enumerate(available_subjects, 1):
@@ -2655,7 +2540,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def manage_earnings(self):
-        """Manage earnings configuration (base salary, overtime, bonuses)."""
+
         while True:
             clear_screen()
             print_header("MANAGE EARNINGS")
@@ -2725,7 +2610,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def manage_deductions(self):
-        """Manage deduction configuration (tax, SSS, absences)."""
+
         while True:
             clear_screen()
             print_header("MANAGE DEDUCTIONS")
@@ -2774,8 +2659,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def payroll_payout(self):
-        """Process payroll payout for a teacher."""
-        # Ask for teacher ID
+
         teacher_id = safe_string_input("Enter teacher ID: ").strip()
         if not teacher_id:
             return
@@ -2786,28 +2670,24 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        # Get payout period
         payout_period = safe_string_input("\nPayout period (YYYY-MM-A or YYYY-MM-B): ")
         if not payout_period or payout_period[-1] not in ['A', 'B']:
             print("Invalid format. Use YYYY-MM-A or YYYY-MM-B")
             input("Press Enter to continue...")
             return
         
-        # Check if already paid
         existing = self.fee_mgr.get_teacher_payroll_by_period(teacher.teacher_id, payout_period)
         if existing:
             print(f"Payroll already exists for {payout_period}")
             input("Press Enter to continue...")
             return
         
-        # Create payroll record
         success, payroll_id = self.fee_mgr.create_teacher_payroll(teacher.teacher_id, payout_period)
         if not success:
             print(f"✗ Error: {payroll_id}")
             input("Press Enter to continue...")
             return
         
-        # Get all subjects from class schedules (single source of truth)
         subjects_set = set()
         for section in teacher.class_sessions:
             schedules = self.teacher_mgr.get_schedules(teacher.teacher_id, section)
@@ -2827,17 +2707,14 @@ class AdminPortal:
             rate_str = f"${rate.rate_per_day:.2f}/day" if rate else "(rate not set)"
             print(f"{i}. {subject} - {rate_str}")
         
-        # Get days present
         days_present = safe_int_input("Days present (0-14): ", 0, 14)
         if days_present is None:
             return
         
-        # Get overtime hours
         overtime = safe_int_input("Overtime hours (0 if none): ", 0)
         if overtime is None:
             return
         
-        # Select bonuses
         bonuses = self.fee_mgr.list_bonuses()
         selected_bonus_ids = []
         
@@ -2856,7 +2733,6 @@ class AdminPortal:
                 except:
                     print("Invalid bonus selection.")
         
-        # Calculate payroll with all subjects
         success, msg = self.fee_mgr.calculate_payroll(
             payroll_id, days_present, subjects, selected_bonus_ids, float(overtime)
         )
@@ -2866,7 +2742,6 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        # Show breakdown
         clear_screen()
         print_header(f"PAYROLL BREAKDOWN")
         
@@ -2894,7 +2769,6 @@ class AdminPortal:
             
             print(f"\nNet Salary: ${breakdown['net_salary']:.2f}")
         
-        # Confirm and finalize
         confirm = safe_string_input("\nConfirm payout? (yes/no): ")
         if confirm and confirm.lower() == "yes":
             success, msg = self.fee_mgr.finalize_payroll(payroll_id)
@@ -2906,7 +2780,7 @@ class AdminPortal:
         input("Press Enter to continue...")
     
     def view_payroll_records(self):
-        """View all payroll records."""
+
         payroll_records = self.fee_mgr.list_all_payroll()
         
         if not payroll_records:
@@ -2931,7 +2805,7 @@ class AdminPortal:
         input("Press Enter to continue...")
     
     def financial_reports(self):
-        """View financial reports."""
+
         clear_screen()
         print_header("FINANCIAL REPORTS")
         
@@ -2948,7 +2822,7 @@ class AdminPortal:
         input("\nPress Enter to continue...")
     
     def course_menu(self):
-        """Course and section management submenu."""
+
         while True:
             clear_screen()
             print_header("COURSE & SECTION MANAGEMENT")
@@ -3047,7 +2921,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def communication_menu(self):
-        """Parent & Communication portal submenu."""
+
         while True:
             clear_screen()
             print_header("PARENT & COMMUNICATION MANAGEMENT")
@@ -3075,7 +2949,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def view_parents(self):
-        """View all parent accounts with selection."""
+
         parents = self.comm_mgr.list_parents()
         
         if not parents:
@@ -3095,12 +2969,11 @@ class AdminPortal:
                 break
             
             if selected is not None:
-                # Get the selected parent
                 selected_parent = parents[selected]
                 self.parent_management_options(selected_parent.parent_id)
     
     def parent_management_options(self, parent_id):
-        """Show management options for a selected parent."""
+
         parent = self.comm_mgr.get_parent(parent_id)
         if not parent:
             print("Parent not found.")
@@ -3126,7 +2999,6 @@ class AdminPortal:
             if choice == "0":
                 break
             elif choice == "1":
-                # Update Parent Info
                 print(f"\nCurrent: {parent.name}, {parent.email}, {parent.phone}")
                 
                 name = safe_string_input("New name (leave blank to skip): ")
@@ -3137,21 +3009,17 @@ class AdminPortal:
                 print(f"{'✓' if success else '✗'} {msg}")
                 input("Press Enter to continue...")
                 
-                # Refresh parent data
                 parent = self.comm_mgr.get_parent(parent_id)
             
             elif choice == "2":
-                # Link Student to Parent
                 student_id = safe_string_input("\nStudent ID to link: ")
                 if student_id:
                     success, msg = self.comm_mgr.add_student_to_parent(parent_id, student_id)
                     print(f"\n{'✓' if success else '✗'} {msg}")
                     input("Press Enter to continue...")
-                    # Refresh parent data
                     parent = self.comm_mgr.get_parent(parent_id)
             
             elif choice == "3":
-                # Remove Student from Parent
                 if not parent.student_ids:
                     print("\n✗ No students linked to this parent")
                     input("Press Enter to continue...")
@@ -3168,11 +3036,9 @@ class AdminPortal:
                     success, msg = self.comm_mgr.remove_student_from_parent(parent_id, student_id)
                     print(f"\n{'✓' if success else '✗'} {msg}")
                     input("Press Enter to continue...")
-                    # Refresh parent data
                     parent = self.comm_mgr.get_parent(parent_id)
             
             elif choice == "4":
-                # View Parent Details
                 clear_screen()
                 print_header(f"PARENT DETAILS - {parent.name}")
                 print(f"\nID: {parent.parent_id}")
@@ -3193,7 +3059,7 @@ class AdminPortal:
                 input("\nPress Enter to continue...")
     
     def send_notification(self):
-        """Send a notification to a parent."""
+
         parent_id = safe_string_input("Enter parent ID: ")
         if not parent_id:
             return
@@ -3239,7 +3105,7 @@ class AdminPortal:
         input("Press Enter to continue...")
     
     def send_bulk_notification(self):
-        """Send notification to all parents."""
+
         print_section("SEND BULK NOTIFICATION")
         
         all_parents = self.comm_mgr.list_parents()
@@ -3272,7 +3138,7 @@ class AdminPortal:
         input("Press Enter to continue...")
     
     def view_notifications(self):
-        """View notifications sent."""
+
         all_notifs = self.comm_mgr.list_notifications()
         
         if not all_notifs:
@@ -3292,7 +3158,7 @@ class AdminPortal:
                 break
     
     def create_standalone_parent(self):
-        """Create a new parent account without requiring students upfront."""
+
         clear_screen()
         print_header("CREATE NEW PARENT ACCOUNT")
         
@@ -3314,7 +3180,6 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        # Collect at least one student ID to satisfy the requirement
         student_ids = []
         print("\nLink students to this parent (enter at least one student ID):")
         
@@ -3326,7 +3191,6 @@ class AdminPortal:
                 else:
                     confirm = safe_string_input("No students linked. Create parent anyway? (yes/no): ")
                     if confirm and confirm.lower() == "yes":
-                        # Create with a placeholder that we'll clear
                         student_ids = ["PLACEHOLDER"]
                         break
                     continue
@@ -3351,11 +3215,9 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        # Create parent account
         success, parent_id = self.comm_mgr.create_parent_account(name, email, phone, student_ids)
         
         if success:
-            # If we used placeholder, remove it
             if student_ids == ["PLACEHOLDER"]:
                 self.comm_mgr.get_parent(parent_id).student_ids = []
                 self.comm_mgr.get_parent(parent_id).children = []
@@ -3373,7 +3235,7 @@ class AdminPortal:
         input("Press Enter to continue...")
     
     def manage_parents(self):
-        """Manage parent accounts."""
+
         while True:
             clear_screen()
             print_header("MANAGE PARENT ACCOUNTS")
@@ -3488,19 +3350,17 @@ class AdminPortal:
                 self.view_parent_by_student_id()
     
     def view_parent_by_student_id(self):
-        """Find and view parent details by entering a student ID."""
+
         student_id = safe_string_input("\nEnter Student ID: ")
         if not student_id:
             return
         
-        # Verify student exists
         student = self.student_mgr.get_student(student_id)
         if not student:
             print("✗ Student not found.")
             input("Press Enter to continue...")
             return
         
-        # Find parent(s) linked to this student
         all_parents = self.comm_mgr.list_parents()
         parent_found = None
         
@@ -3514,7 +3374,6 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        # Display parent details
         clear_screen()
         print_header(f"PARENT DETAILS (via Student: {student.name})")
         print(f"\nStudent ID: {student_id}")
@@ -3538,7 +3397,7 @@ class AdminPortal:
         input("\nPress Enter to continue...")
     
     def settings_menu(self):
-        """System settings submenu."""
+
         while True:
             clear_screen()
             print_header("SYSTEM SETTINGS")
@@ -3560,15 +3419,14 @@ class AdminPortal:
                 input("Press Enter to continue...")
     
     def change_admin_password(self):
-        """Change admin password."""
-        # For simplicity, we'll just show a message
+
         print_section("CHANGE ADMIN PASSWORD")
         print("\nThis feature requires authentication.")
         print("Please use the password recovery system at login.")
         input("Press Enter to continue...")
     
     def view_statistics(self):
-        """View system statistics."""
+
         clear_screen()
         print_header("SYSTEM STATISTICS")
         
@@ -3593,13 +3451,11 @@ class AdminPortal:
         input("\nPress Enter to continue...")
     
     def run(self):
-        """Run the admin portal."""
-        # Login
+
         if not self.login():
             print("\n✗ Login failed. Exiting.")
             sys.exit(1)
         
-        # Main menu loop
         while True:
             self.show_main_menu()
             choice = safe_string_input("Choose option: ")
@@ -3622,7 +3478,6 @@ class AdminPortal:
             else:
                 print("Invalid option. Please try again.")
                 input("Press Enter to continue...")
-
 
 if __name__ == "__main__":
     portal = AdminPortal()

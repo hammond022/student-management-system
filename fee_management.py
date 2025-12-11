@@ -1,46 +1,34 @@
-"""
-Fee & Finance Management module for the College Academic Management System.
-Handles fee structures by COURSE-YEAR, particulars (library, athletics, etc.), 
-invoices, payments, and payroll.
-"""
-
 from utils import (
     load_from_pickle, save_to_pickle, safe_string_input, safe_int_input, FEES_FILE
 )
 from typing import Dict, List, Optional, Tuple, Set
 from datetime import datetime
 
-
 class SubjectFee:
-    """Fee for a specific subject in a course-year."""
-    
+
     def __init__(self, subject: str, amount: float):
         self.subject = subject
         self.amount = amount
 
-
 class Particular:
-    """Additional fee particular (library, athletics, etc.)."""
-    
+
     def __init__(self, name: str, amount: float, description: str = ""):
         self.name = name
         self.amount = amount
         self.description = description
         self.created_date = datetime.now().strftime("%Y-%m-%d")
 
-
 class FeeStructure:
-    """Fee structure for a COURSE-YEAR combination."""
-    
+
     def __init__(self, course_code: str, year: int):
         self.course_code = course_code
         self.year = year
-        self.subject_fees = {}  # subject_name -> SubjectFee
-        self.selected_particulars = []  # List of particular names to include
+        self.subject_fees = {}  
+        self.selected_particulars = []  
         self.created_date = datetime.now().strftime("%Y-%m-%d")
     
     def add_subject_fee(self, subject: str, amount: float) -> Tuple[bool, str]:
-        """Add or update a subject fee."""
+    
         if amount <= 0:
             return False, "Subject fee must be greater than 0"
         
@@ -48,7 +36,7 @@ class FeeStructure:
         return True, f"Subject '{subject}' fee set to ${amount:.2f}"
     
     def add_particular(self, particular_name: str) -> Tuple[bool, str]:
-        """Add a particular to this fee structure."""
+      
         if particular_name in self.selected_particulars:
             return False, f"Particular '{particular_name}' already included"
         
@@ -56,7 +44,7 @@ class FeeStructure:
         return True, f"Particular '{particular_name}' added"
     
     def remove_particular(self, particular_name: str) -> Tuple[bool, str]:
-        """Remove a particular from this fee structure."""
+  
         if particular_name not in self.selected_particulars:
             return False, f"Particular '{particular_name}' not found"
         
@@ -64,14 +52,11 @@ class FeeStructure:
         return True, f"Particular '{particular_name}' removed"
     
     def get_section_key(self) -> str:
-        """Get the section key for lookup (COURSE-YEAR)."""
+       
         return f"{self.course_code}-{self.year}"
 
-
-
 class Invoice:
-    """Student fee invoice."""
-    
+
     def __init__(self, invoice_id: str, student_id: str, course_code: str, year: int, 
                  amount: float, due_date: str):
         self.invoice_id = invoice_id
@@ -81,14 +66,12 @@ class Invoice:
         self.amount = amount
         self.due_date = due_date
         self.issued_date = datetime.now().strftime("%Y-%m-%d")
-        self.status = "pending"  # pending, paid, overdue
+        self.status = "pending"  
         self.payment_date = None
-        self.breakdown = {}  # subject/particular -> amount breakdown
-
+        self.breakdown = {}  
 
 class Payment:
-    """Payment record."""
-    
+
     def __init__(self, payment_id: str, invoice_id: str, amount: float):
         self.payment_id = payment_id
         self.invoice_id = invoice_id
@@ -96,82 +79,62 @@ class Payment:
         self.date = datetime.now().strftime("%Y-%m-%d")
         self.status = "confirmed"
 
-
 class WorkloadRate:
-    """Pay rate for a specific subject."""
-    
+
     def __init__(self, subject: str, rate_per_day: float):
         self.subject = subject
         self.rate_per_day = rate_per_day
 
-
 class Bonus:
-    """Reusable bonus definition."""
-    
+
     def __init__(self, bonus_id: str, name: str, amount: float):
         self.bonus_id = bonus_id
         self.name = name
         self.amount = amount
 
-
 class EarningsConfig:
-    """System-wide earnings configuration."""
-    
+
     def __init__(self):
         self.base_salary = 0.0
-        self.overtime_rate = 1.5  # multiplier for overtime hours
-        self.bonuses = {}  # bonus_id -> Bonus
-
+        self.overtime_rate = 1.5 
+        self.bonuses = {} 
 
 class DeductionConfig:
-    """System-wide deduction configuration."""
     
     def __init__(self):
-        self.tax_rate = 0.0  # percentage (e.g., 12.5 for 12.5%)
-        self.sss_rate = 0.0  # percentage (e.g., 5.0 for 5%)
-        self.absence_deduction = 0.0  # amount per day
-
+        self.tax_rate = 0.0 
+        self.sss_rate = 0.0  
+        self.absence_deduction = 0.0 
 
 class TeacherPayroll:
-    """Payroll record for a teacher - tracked by payout period."""
     
     def __init__(self, payroll_id: str, teacher_id: str, payout_period: str):
-        """
-        payroll_id: unique identifier (PAYROLL-######)
-        teacher_id: teacher owner
-        payout_period: YYYY-MM-A (first fortnight) or YYYY-MM-B (second fortnight)
-        """
         self.payroll_id = payroll_id
         self.teacher_id = teacher_id
-        self.payout_period = payout_period  # YYYY-MM-A or YYYY-MM-B
+        self.payout_period = payout_period 
         
-        # Workload & Earnings
         self.days_present = 0
-        self.workload_earnings = 0.0  # calculated from workload
-        self.selected_bonus_ids = []  # list of bonus_ids to apply
+        self.workload_earnings = 0.0  
+        self.selected_bonus_ids = []  
         self.bonus_amount = 0.0
         self.overtime_hours = 0.0
         self.overtime_earnings = 0.0
-        
-        # Salary Breakdown
+
         self.base_salary = 0.0
-        self.gross_salary = 0.0  # base + workload + bonus + overtime
+        self.gross_salary = 0.0  
         
-        # Deductions
         self.tax_deduction = 0.0
         self.sss_deduction = 0.0
         self.absence_deduction = 0.0
         self.total_deductions = 0.0
         
         self.net_salary = 0.0
-        self.payment_status = "paid"  # All payrolls are paid upon creation/confirmation
+        self.payment_status = "paid" 
         self.payout_date = datetime.now().strftime("%Y-%m-%d")
         self.created_date = datetime.now().strftime("%Y-%m-%d")
 
-
 class FeeManager:
-    """Manages fee structures by COURSE-YEAR, particulars, invoices, payments, and teacher payroll."""
-    
+
     def __init__(self):
         data = load_from_pickle(FEES_FILE)
         self.fee_structures = data.get("fee_structures", {})  # (course-year) -> FeeStructure
@@ -179,19 +142,16 @@ class FeeManager:
         self.invoices = data.get("invoices", {})
         self.payments = data.get("payments", {})
         
-        # New payroll system
         self.teacher_payroll = data.get("teacher_payroll", {})  # payroll_id -> TeacherPayroll
         self.workload_rates = data.get("workload_rates", {})  # subject -> WorkloadRate
         self.earnings_config = data.get("earnings_config", EarningsConfig())
         self.deduction_config = data.get("deduction_config", DeductionConfig())
         
-        # Counters
         self.invoice_counter = data.get("invoice_counter", 0)
         self.payment_counter = data.get("payment_counter", 0)
         self.payroll_counter = data.get("payroll_counter", 0)
     
     def save_data(self):
-        """Save all fee data to pickle file."""
         data = {
             "fee_structures": self.fee_structures,
             "particulars": self.particulars,
@@ -207,9 +167,7 @@ class FeeManager:
         }
         save_to_pickle(FEES_FILE, data)
     
-    # ============ PARTICULARS MANAGEMENT ============
     def create_particular(self, name: str, amount: float, description: str = "") -> Tuple[bool, str]:
-        """Create a new particular (library fee, athletics fee, etc.)."""
         if not name or len(name) < 2:
             return False, "Particular name must be at least 2 characters"
         
@@ -225,16 +183,13 @@ class FeeManager:
         return True, f"Particular '{name}' created: ${amount:.2f}"
     
     def get_particular(self, name: str) -> Optional[Particular]:
-        """Get particular by name."""
         return self.particulars.get(name)
     
     def list_particulars(self) -> List[Particular]:
-        """Get all particulars."""
         return list(self.particulars.values())
     
     def update_particular(self, name: str, amount: float = None, 
                          description: str = None) -> Tuple[bool, str]:
-        """Update particular."""
         if name not in self.particulars:
             return False, "Particular not found"
         
@@ -249,7 +204,6 @@ class FeeManager:
         return True, "Particular updated"
     
     def delete_particular(self, name: str) -> Tuple[bool, str]:
-        """Delete particular."""
         if name not in self.particulars:
             return False, "Particular not found"
         
@@ -257,13 +211,7 @@ class FeeManager:
         self.save_data()
         return True, "Particular deleted"
     
-    # ============ FEE STRUCTURE MANAGEMENT (by COURSE-YEAR) ============
     def create_fee_structure(self, course_code: str, year: int) -> Tuple[bool, FeeStructure]:
-        """
-        Create a new fee structure for a COURSE-YEAR combination.
-        
-        Returns: (success, fee_structure_or_error_msg)
-        """
         if not course_code or len(course_code) < 2:
             return False, "Course code required"
         
@@ -281,17 +229,14 @@ class FeeManager:
         return True, fee_structure
     
     def get_fee_structure(self, course_code: str, year: int) -> Optional[FeeStructure]:
-        """Get fee structure by COURSE-YEAR."""
         section_key = f"{course_code}-{year}"
         return self.fee_structures.get(section_key)
     
     def list_fee_structures(self) -> List[FeeStructure]:
-        """Get all fee structures."""
         return list(self.fee_structures.values())
     
     def add_subject_fee_to_structure(self, course_code: str, year: int, 
                                      subject: str, amount: float) -> Tuple[bool, str]:
-        """Add subject fee to a fee structure."""
         fee_structure = self.get_fee_structure(course_code, year)
         if fee_structure is None:
             return False, "Fee structure not found"
@@ -303,7 +248,6 @@ class FeeManager:
     
     def add_particular_to_structure(self, course_code: str, year: int, 
                                     particular_name: str) -> Tuple[bool, str]:
-        """Add a particular to a fee structure."""
         fee_structure = self.get_fee_structure(course_code, year)
         if fee_structure is None:
             return False, "Fee structure not found"
@@ -318,7 +262,6 @@ class FeeManager:
     
     def remove_particular_from_structure(self, course_code: str, year: int, 
                                         particular_name: str) -> Tuple[bool, str]:
-        """Remove a particular from a fee structure."""
         fee_structure = self.get_fee_structure(course_code, year)
         if fee_structure is None:
             return False, "Fee structure not found"
@@ -329,18 +272,15 @@ class FeeManager:
         return success, msg
     
     def calculate_total_fee(self, course_code: str, year: int) -> float:
-        """Calculate total fee for a COURSE-YEAR (sum of subjects + particulars)."""
         fee_structure = self.get_fee_structure(course_code, year)
         if fee_structure is None:
             return 0.0
         
         total = 0.0
         
-        # Add subject fees
         for subject_fee in fee_structure.subject_fees.values():
             total += subject_fee.amount
         
-        # Add selected particulars
         for particular_name in fee_structure.selected_particulars:
             particular = self.particulars.get(particular_name)
             if particular:
@@ -349,18 +289,15 @@ class FeeManager:
         return total
     
     def get_fee_breakdown(self, course_code: str, year: int) -> Dict[str, float]:
-        """Get fee breakdown (subjects and particulars) for a COURSE-YEAR."""
         fee_structure = self.get_fee_structure(course_code, year)
         if fee_structure is None:
             return {}
         
         breakdown = {}
         
-        # Add subject fees
         for subject_name, subject_fee in fee_structure.subject_fees.items():
             breakdown[f"Subject: {subject_name}"] = subject_fee.amount
         
-        # Add selected particulars
         for particular_name in fee_structure.selected_particulars:
             particular = self.particulars.get(particular_name)
             if particular:
@@ -369,7 +306,6 @@ class FeeManager:
         return breakdown
     
     def delete_fee_structure(self, course_code: str, year: int) -> Tuple[bool, str]:
-        """Delete a fee structure."""
         section_key = f"{course_code}-{year}"
         if section_key not in self.fee_structures:
             return False, "Fee structure not found"
@@ -378,20 +314,8 @@ class FeeManager:
         self.save_data()
         return True, "Fee structure deleted"
     
-    # ============ INVOICE MANAGEMENT ============
     def generate_invoices_for_section(self, course_code: str, year: int, 
                                       students: List, due_date: str) -> Tuple[bool, List[str]]:
-        """
-        Generate invoices for all students in a COURSE-YEAR section.
-        
-        Args:
-            course_code: Course code
-            year: Year level
-            students: List of student objects with student_id
-            due_date: Due date in YYYY-MM-DD format
-        
-        Returns: (success, list_of_invoice_ids)
-        """
         total_fee = self.calculate_total_fee(course_code, year)
         
         if total_fee <= 0:
@@ -415,24 +339,19 @@ class FeeManager:
         return True, invoice_ids
     
     def get_invoice(self, invoice_id: str) -> Optional[Invoice]:
-        """Get invoice by ID."""
         return self.invoices.get(invoice_id)
     
     def get_student_invoices(self, student_id: str) -> List[Invoice]:
-        """Get all invoices for a student."""
         return [inv for inv in self.invoices.values() if inv.student_id == student_id]
     
     def get_section_invoices(self, course_code: str, year: int) -> List[Invoice]:
-        """Get all invoices for a COURSE-YEAR section."""
         return [inv for inv in self.invoices.values() 
                 if inv.course_code == course_code and inv.year == year]
     
     def list_invoices(self) -> List[Invoice]:
-        """Get all invoices."""
         return list(self.invoices.values())
     
     def update_invoice_status(self, invoice_id: str, status: str) -> Tuple[bool, str]:
-        """Update invoice status."""
         if invoice_id not in self.invoices:
             return False, "Invoice not found"
         
@@ -448,9 +367,7 @@ class FeeManager:
         self.save_data()
         return True, f"Invoice status updated to {status}"
     
-    # ============ PAYMENT MANAGEMENT ============
     def record_payment(self, invoice_id: str, amount: float) -> Tuple[bool, str]:
-        """Record a payment for an invoice."""
         if invoice_id not in self.invoices:
             return False, "Invoice not found"
         
@@ -468,7 +385,6 @@ class FeeManager:
         payment = Payment(payment_id, invoice_id, amount)
         self.payments[payment_id] = payment
         
-        # Update invoice status
         if amount == invoice.amount:
             invoice.status = "paid"
             invoice.payment_date = datetime.now().strftime("%Y-%m-%d")
@@ -477,27 +393,19 @@ class FeeManager:
         return True, payment_id
     
     def get_payment(self, payment_id: str) -> Optional[Payment]:
-        """Get payment by ID."""
         return self.payments.get(payment_id)
     
     def get_invoice_payments(self, invoice_id: str) -> List[Payment]:
-        """Get all payments for an invoice."""
         return [p for p in self.payments.values() if p.invoice_id == invoice_id]
     
     def list_payments(self) -> List[Payment]:
-        """Get all payments."""
         return list(self.payments.values())
     
     def get_total_paid(self, invoice_id: str) -> float:
-        """Get total amount paid for an invoice."""
         payments = self.get_invoice_payments(invoice_id)
         return sum(p.amount for p in payments)
     
-    # ============ PAYROLL MANAGEMENT (NEW SYSTEM) ============
-    
-    # ----- Workload Rate Management -----
     def set_workload_rate(self, subject: str, rate_per_day: float) -> Tuple[bool, str]:
-        """Set pay rate for a subject."""
         if not subject or rate_per_day <= 0:
             return False, "Invalid subject or rate"
         
@@ -506,16 +414,12 @@ class FeeManager:
         return True, f"Workload rate for {subject} set to ${rate_per_day:.2f}/day"
     
     def get_workload_rate(self, subject: str) -> Optional[WorkloadRate]:
-        """Get workload rate for a subject."""
         return self.workload_rates.get(subject)
     
     def list_workload_rates(self) -> List[WorkloadRate]:
-        """Get all workload rates."""
         return list(self.workload_rates.values())
     
-    # ----- Earnings Configuration -----
     def set_base_salary(self, amount: float) -> Tuple[bool, str]:
-        """Set base salary for all employees."""
         if amount < 0:
             return False, "Base salary cannot be negative"
         
@@ -524,7 +428,6 @@ class FeeManager:
         return True, f"Base salary set to ${amount:.2f}"
     
     def set_overtime_rate(self, multiplier: float) -> Tuple[bool, str]:
-        """Set overtime rate multiplier (e.g., 1.5 for 1.5x)."""
         if multiplier <= 0:
             return False, "Multiplier must be positive"
         
@@ -533,7 +436,6 @@ class FeeManager:
         return True, f"Overtime rate set to {multiplier}x"
     
     def create_bonus(self, name: str, amount: float) -> Tuple[bool, str]:
-        """Create a bonus that can be applied to payrolls."""
         if not name or amount <= 0:
             return False, "Invalid bonus name or amount"
         
@@ -544,11 +446,9 @@ class FeeManager:
         return True, bonus_id
     
     def list_bonuses(self) -> List[Bonus]:
-        """Get all available bonuses."""
         return list(self.earnings_config.bonuses.values())
     
     def delete_bonus(self, bonus_id: str) -> Tuple[bool, str]:
-        """Delete a bonus."""
         if bonus_id not in self.earnings_config.bonuses:
             return False, "Bonus not found"
         
@@ -556,9 +456,7 @@ class FeeManager:
         self.save_data()
         return True, "Bonus deleted"
     
-    # ----- Deduction Configuration -----
     def set_tax_rate(self, tax_rate: float) -> Tuple[bool, str]:
-        """Set tax rate as percentage (e.g., 12.5 for 12.5%)."""
         if tax_rate < 0:
             return False, "Tax rate cannot be negative"
         
@@ -567,7 +465,6 @@ class FeeManager:
         return True, f"Tax rate set to {tax_rate}%"
     
     def set_sss_rate(self, sss_rate: float) -> Tuple[bool, str]:
-        """Set SSS contribution rate as percentage (e.g., 5.0 for 5%)."""
         if sss_rate < 0:
             return False, "SSS rate cannot be negative"
         
@@ -576,7 +473,6 @@ class FeeManager:
         return True, f"SSS rate set to {sss_rate}%"
     
     def set_absence_deduction(self, amount_per_day: float) -> Tuple[bool, str]:
-        """Set deduction amount per absent day."""
         if amount_per_day < 0:
             return False, "Absence deduction cannot be negative"
         
@@ -584,16 +480,10 @@ class FeeManager:
         self.save_data()
         return True, f"Absence deduction set to ${amount_per_day:.2f}/day"
     
-    # ----- Teacher Payroll Management -----
     def create_teacher_payroll(self, teacher_id: str, payout_period: str) -> Tuple[bool, str]:
-        """
-        Create payroll for teacher for a specific payout period.
-        payout_period format: YYYY-MM-A (first fortnight) or YYYY-MM-B (second fortnight)
-        """
         if not teacher_id or not payout_period:
             return False, "Teacher ID and payout period required"
         
-        # Check for duplicate payout periods
         for payroll in self.teacher_payroll.values():
             if payroll.teacher_id == teacher_id and payroll.payout_period == payout_period:
                 return False, f"Teacher already has payroll for {payout_period}"
@@ -609,41 +499,31 @@ class FeeManager:
         return True, payroll_id
     
     def get_teacher_payroll(self, payroll_id: str) -> Optional[TeacherPayroll]:
-        """Get payroll record by ID."""
         return self.teacher_payroll.get(payroll_id)
     
     def get_teacher_payroll_by_period(self, teacher_id: str, payout_period: str) -> Optional[TeacherPayroll]:
-        """Get payroll record for teacher in specific period."""
         for payroll in self.teacher_payroll.values():
             if payroll.teacher_id == teacher_id and payroll.payout_period == payout_period:
                 return payroll
         return None
     
     def get_teacher_all_payroll(self, teacher_id: str) -> List[TeacherPayroll]:
-        """Get all payroll records for a teacher."""
         return [p for p in self.teacher_payroll.values() if p.teacher_id == teacher_id]
     
     def list_all_payroll(self) -> List[TeacherPayroll]:
-        """Get all payroll records."""
         return list(self.teacher_payroll.values())
     
     def calculate_payroll(self, payroll_id: str, days_present: int, 
                          subjects: List[str], selected_bonus_ids: List[str] = None,
                          overtime_hours: float = 0.0) -> Tuple[bool, str]:
-        """
-        Calculate payroll details for a payout covering all subjects.
-        Returns total with breakdown.
-        """
         if payroll_id not in self.teacher_payroll:
             return False, "Payroll not found"
         
         payroll = self.teacher_payroll[payroll_id]
         
-        # Validate days
         if days_present < 0:
             return False, "Days present cannot be negative"
         
-        # Calculate workload earnings for all subjects
         payroll.days_present = days_present
         payroll.workload_earnings = 0.0
         
@@ -653,25 +533,20 @@ class FeeManager:
                 return False, f"No workload rate set for {subject}"
             payroll.workload_earnings += days_present * workload_rate.rate_per_day
         
-        # Add overtime (based on base salary hourly rate)
         if overtime_hours > 0:
-            # Assume 8-hour workday and 14-day fortnight for hourly base rate
             hourly_base_rate = payroll.base_salary / (8 * 14)
             payroll.overtime_earnings = overtime_hours * hourly_base_rate * self.earnings_config.overtime_rate
         
         payroll.overtime_hours = overtime_hours
         
-        # Add bonuses
         payroll.selected_bonus_ids = selected_bonus_ids or []
         payroll.bonus_amount = sum(self.earnings_config.bonuses[bid].amount 
                                   for bid in selected_bonus_ids 
                                   if bid in self.earnings_config.bonuses)
         
-        # Calculate gross salary
         payroll.gross_salary = (payroll.base_salary + payroll.workload_earnings + 
                                payroll.bonus_amount + payroll.overtime_earnings)
         
-        # Calculate deductions
         payroll.tax_deduction = payroll.gross_salary * (self.deduction_config.tax_rate / 100)
         payroll.sss_deduction = payroll.gross_salary * (self.deduction_config.sss_rate / 100)
         payroll.absence_deduction = (14 - days_present) * self.deduction_config.absence_deduction  # 14 days per fortnight
@@ -679,14 +554,13 @@ class FeeManager:
         payroll.total_deductions = (payroll.tax_deduction + payroll.sss_deduction + 
                                    payroll.absence_deduction)
         
-        # Calculate net salary
         payroll.net_salary = payroll.gross_salary - payroll.total_deductions
         
         self.save_data()
         return True, f"Payroll calculated: ${payroll.net_salary:.2f}"
     
     def finalize_payroll(self, payroll_id: str) -> Tuple[bool, str]:
-        """Finalize payroll with payout date."""
+
         if payroll_id not in self.teacher_payroll:
             return False, "Payroll record not found"
         
@@ -697,7 +571,7 @@ class FeeManager:
         return True, "Payroll finalized"
     
     def get_payroll_breakdown(self, payroll_id: str) -> Optional[Dict]:
-        """Get detailed breakdown of payroll."""
+
         payroll = self.get_teacher_payroll(payroll_id)
         if not payroll:
             return None
@@ -719,10 +593,8 @@ class FeeManager:
             "payment_status": payroll.payment_status,
         }
 
-    
-    # ============ FINANCIAL REPORTS ============
     def get_total_fees_collected(self) -> float:
-        """Get total fees collected (sum of all paid invoices)."""
+
         total = 0.0
         for invoice in self.invoices.values():
             if invoice.status == "paid":
@@ -730,7 +602,6 @@ class FeeManager:
         return total
     
     def get_outstanding_fees(self) -> float:
-        """Get total outstanding fees (pending + overdue)."""
         total = 0.0
         for invoice in self.invoices.values():
             if invoice.status in ["pending", "overdue"]:
@@ -738,7 +609,6 @@ class FeeManager:
         return total
     
     def get_total_payroll_expenses(self, payout_period: str = None) -> float:
-        """Get total payroll expenses for a payout period or all time."""
         total = 0.0
         for payroll in self.teacher_payroll.values():
             if payout_period is None or payroll.payout_period == payout_period:
@@ -746,7 +616,6 @@ class FeeManager:
         return total
     
     def get_financial_summary(self) -> Dict[str, float]:
-        """Get financial summary report."""
         return {
             "total_fees_collected": self.get_total_fees_collected(),
             "outstanding_fees": self.get_outstanding_fees(),

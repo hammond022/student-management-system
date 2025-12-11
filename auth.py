@@ -1,8 +1,3 @@
-"""
-Authentication module for the College Academic Management System.
-Handles admin, teacher, and parent login, password recovery, and account creation.
-"""
-
 from utils import (
     load_from_pickle, save_to_pickle, generate_id, validate_password,
     safe_string_input, ADMINS_FILE
@@ -10,33 +5,26 @@ from utils import (
 from typing import Dict, Optional, Tuple
 import hashlib
 
-
 class AuthManager:
-    """Manages authentication for admins, teachers, and parents."""
     
     def __init__(self):
         self.admins = load_from_pickle(ADMINS_FILE)
     
     def _hash_password(self, password: str) -> str:
-        """Hash password using SHA256."""
+
         return hashlib.sha256(password.encode()).hexdigest()
     
     def save_admins(self):
-        """Save admins to pickle file."""
+
         save_to_pickle(ADMINS_FILE, self.admins)
     
     def admin_exists(self) -> bool:
-        """Check if any admin account exists."""
+
         return len(self.admins) > 0
     
     def create_admin(self, username: str, password: str, 
                      security_questions: Dict[str, str]) -> Tuple[bool, str]:
-        """
-        Create a new admin account.
-        
-        Returns: (success, message_or_admin_id)
-        """
-        # Validate inputs
+     
         if not username or len(username) < 3:
             return False, "Username must be at least 3 characters long"
         
@@ -50,10 +38,8 @@ class AuthManager:
         if len(security_questions) != 3:
             return False, "Must provide 3 security questions and answers"
         
-        # Generate admin ID
         admin_id = generate_id("011", self.admins)
         
-        # Create admin record
         hashed_password = self._hash_password(password)
         self.admins[username] = {
             "id": admin_id,
@@ -66,11 +52,7 @@ class AuthManager:
         return True, admin_id
     
     def admin_login(self, username: str, password: str) -> Tuple[bool, str]:
-        """
-        Authenticate admin login.
-        
-        Returns: (success, message_or_admin_id)
-        """
+      
         if username not in self.admins:
             return False, "Invalid username or password"
         
@@ -83,11 +65,7 @@ class AuthManager:
         return True, admin["id"]
     
     def recover_password(self, username: str) -> Tuple[bool, str]:
-        """
-        Recover admin password using security questions.
-        
-        Returns: (success, message)
-        """
+      
         if username not in self.admins:
             return False, "Username not found"
         
@@ -106,8 +84,7 @@ class AuthManager:
         
         if correct_answers < 3:
             return False, "Incorrect answers. Password recovery failed."
-        
-        # Ask for new password
+
         print("\n--- Set New Password ---")
         while True:
             new_password = safe_string_input("Enter new password: ")
@@ -125,8 +102,7 @@ class AuthManager:
                 continue
             
             break
-        
-        # Update password
+
         hashed_password = self._hash_password(new_password)
         admin["password"] = hashed_password
         self.save_admins()
@@ -135,8 +111,7 @@ class AuthManager:
     
     def change_password(self, username: str, old_password: str, 
                        new_password: str) -> Tuple[bool, str]:
-        """Change admin password with old password verification."""
-        # Verify old password
+
         success, msg = self.admin_login(username, old_password)
         if not success:
             return False, "Current password is incorrect"
@@ -151,13 +126,8 @@ class AuthManager:
         
         return True, "Password successfully changed"
 
-
 def setup_first_admin() -> Tuple[bool, str]:
-    """
-    Setup first admin account on system initialization.
-    
-    Returns: (success, admin_id)
-    """
+ 
     auth = AuthManager()
     
     if auth.admin_exists():
@@ -198,7 +168,7 @@ def setup_first_admin() -> Tuple[bool, str]:
     
     print("\n--- Security Questions (for password recovery) ---")
     print("Create 3 security questions and answers that you can remember.")
-    print("Example: 'What is your pet\\'s name?' with answer 'Fluffy'\n")
+    print("Example: 'What is your pet\\'s name?' with answer 'Jonas'\n")
     
     security_questions = {}
     
@@ -227,12 +197,8 @@ def setup_first_admin() -> Tuple[bool, str]:
         print(f"\n✗ Failed to create admin account: {result}")
         return False, result
 
-
 def admin_login_prompt() -> Optional[str]:
-    """
-    Prompt for admin login and return admin ID if successful.
-    Returns None if login fails or user exits.
-    """
+
     auth = AuthManager()
     
     print("\n" + "=" * 60)
@@ -274,7 +240,6 @@ def admin_login_prompt() -> Optional[str]:
                         success, msg = auth.recover_password(recovery_username)
                         print(msg)
                         if success:
-                            # Try login again
                             return admin_login_prompt()
     
     return None

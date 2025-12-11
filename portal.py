@@ -1,7 +1,4 @@
-"""
-User Portal - Multi-role access system.
-Unified entry point for Students, Teachers, and Parents with account creation.
-"""
+
 
 import sys
 from utils import (
@@ -15,10 +12,8 @@ from fee_management import FeeManager
 import hashlib
 import pickle
 
-
 class UserAccount:
-    """Base user account class."""
-    
+
     def __init__(self, user_id: str, user_type: str, password_hash: str):
         self.user_id = user_id
         self.user_type = user_type  # "student", "teacher", or "parent"
@@ -26,13 +21,11 @@ class UserAccount:
     
     @staticmethod
     def hash_password(password: str) -> str:
-        """Hash password using SHA256."""
+
         return hashlib.sha256(password.encode()).hexdigest()
 
-
 class UserPortal:
-    """Unified portal for Students, Teachers, and Parents."""
-    
+
     ACCOUNTS_FILE = "data/user_accounts.pkl"
     
     def __init__(self):
@@ -46,7 +39,7 @@ class UserPortal:
         self.current_id = None
     
     def _load_accounts(self):
-        """Load user accounts from file."""
+
         try:
             with open(self.ACCOUNTS_FILE, "rb") as f:
                 return pickle.load(f)
@@ -54,14 +47,14 @@ class UserPortal:
             return {}
     
     def _save_accounts(self):
-        """Save user accounts to file."""
+
         import os
         os.makedirs("data", exist_ok=True)
         with open(self.ACCOUNTS_FILE, "wb") as f:
             pickle.dump(self.accounts, f)
     
     def show_auth_menu(self):
-        """Show authentication menu."""
+
         clear_screen()
         print("=" * 60)
         print("  UNIFIED USER PORTAL")
@@ -73,7 +66,7 @@ class UserPortal:
         return safe_string_input("Choose option: ")
     
     def show_role_selection(self):
-        """Show role selection for account creation."""
+
         clear_screen()
         print_header("CREATE NEW ACCOUNT - SELECT ROLE")
         print("\n1. Student")
@@ -84,7 +77,7 @@ class UserPortal:
         return safe_string_input("Select your role: ")
     
     def create_account(self):
-        """Create new user account."""
+
         role_choice = self.show_role_selection()
         
         if role_choice == "1":
@@ -98,18 +91,16 @@ class UserPortal:
             input("Press Enter to continue...")
     
     def _create_student_account(self):
-        """Create student account - auto-fills data from StudentManager."""
+
         clear_screen()
         print_header("CREATE STUDENT ACCOUNT")
         
-        # Get ID
         student_id = safe_string_input("\nEnter your Student ID: ")
         if not student_id:
             print("Student ID cannot be empty.")
             input("Press Enter to continue...")
             return
         
-        # Check if student exists in system
         student = self.student_mgr.get_student(student_id)
         if not student:
             print(f"✗ Student ID {student_id} not found in system.")
@@ -117,14 +108,12 @@ class UserPortal:
             input("Press Enter to continue...")
             return
         
-        # Check if account already exists
         account_key = f"student_{student_id}"
         if account_key in self.accounts:
             print("✗ Account already exists for this student ID.")
             input("Press Enter to continue...")
             return
         
-        # Show existing student data for confirmation
         clear_screen()
         print_header("CONFIRM YOUR INFORMATION")
         print(f"\nStudent ID: {student.student_id}")
@@ -139,7 +128,6 @@ class UserPortal:
             input("Press Enter to continue...")
             return
         
-        # Get password
         print("\n--- Set Password ---")
         while True:
             password = safe_string_input("Enter password: ")
@@ -158,7 +146,6 @@ class UserPortal:
             
             break
         
-        # Create account
         password_hash = UserAccount.hash_password(password)
         account = UserAccount(student_id, "student", password_hash)
         
@@ -175,18 +162,16 @@ class UserPortal:
         input("Press Enter to continue...")
     
     def _create_teacher_account(self):
-        """Create teacher account - auto-fills data from TeacherManager."""
+
         clear_screen()
         print_header("CREATE TEACHER ACCOUNT")
         
-        # Get ID
         teacher_id = safe_string_input("\nEnter your Teacher ID: ")
         if not teacher_id:
             print("Teacher ID cannot be empty.")
             input("Press Enter to continue...")
             return
         
-        # Check if teacher exists in system
         teacher = self.teacher_mgr.get_teacher(teacher_id)
         if not teacher:
             print(f"✗ Teacher ID {teacher_id} not found in system.")
@@ -194,14 +179,12 @@ class UserPortal:
             input("Press Enter to continue...")
             return
         
-        # Check if account already exists
         account_key = f"teacher_{teacher_id}"
         if account_key in self.accounts:
             print("✗ Account already exists for this teacher ID.")
             input("Press Enter to continue...")
             return
         
-        # Show existing teacher data for confirmation
         clear_screen()
         print_header("CONFIRM YOUR INFORMATION")
         print(f"\nTeacher ID: {teacher.teacher_id}")
@@ -217,7 +200,6 @@ class UserPortal:
             input("Press Enter to continue...")
             return
         
-        # Get password
         print("\n--- Set Password ---")
         while True:
             password = safe_string_input("Enter password: ")
@@ -236,7 +218,6 @@ class UserPortal:
             
             break
         
-        # Create account
         password_hash = UserAccount.hash_password(password)
         account = UserAccount(teacher_id, "teacher", password_hash)
         
@@ -253,18 +234,16 @@ class UserPortal:
         input("Press Enter to continue...")
     
     def _create_parent_account(self):
-        """Create parent account - auto-fills data from CommunicationManager if exists."""
+
         clear_screen()
         print_header("CREATE PARENT ACCOUNT")
         
-        # Get Parent ID (REQUIRED)
         parent_id = safe_string_input("\nEnter your Parent ID: ")
         if not parent_id:
             print("Parent ID cannot be empty.")
             input("Press Enter to continue...")
             return
         
-        # Check if account already exists for this Parent ID
         account_key = f"parent_{parent_id}"
         if account_key in self.accounts:
             print("✗ Account already exists for this Parent ID.")
@@ -272,10 +251,8 @@ class UserPortal:
             input("Press Enter to continue...")
             return
         
-        # Check if parent already exists in communication manager
         parent = self.comm_mgr.get_parent(parent_id)
         if parent:
-            # Parent exists but no login account - show data for confirmation
             clear_screen()
             print_header("CONFIRM YOUR INFORMATION")
             print(f"\nParent ID: {parent_id}")
@@ -283,7 +260,6 @@ class UserPortal:
             print(f"Email: {parent.email}")
             print(f"Phone: {parent.phone}")
             
-            # Show linked students
             linked_students = parent.student_ids
             if linked_students:
                 print(f"\nLinked Children:")
@@ -298,7 +274,6 @@ class UserPortal:
                 input("Press Enter to continue...")
                 return
             
-            # Get password
             print("\n--- Set Password ---")
             while True:
                 password = safe_string_input("Enter password: ")
@@ -317,7 +292,6 @@ class UserPortal:
                 
                 break
             
-            # Create user account
             password_hash = UserAccount.hash_password(password)
             account = UserAccount(parent_id, "parent", password_hash)
             
@@ -334,7 +308,6 @@ class UserPortal:
             input("Press Enter to continue...")
             return
         else:
-            # Parent ID doesn't exist in system - cannot create account
             print(f"✗ Parent ID {parent_id} not found in the system.")
             print("Please contact administration to register as a parent.")
             print("An admin must create your parent account first.")
@@ -342,11 +315,10 @@ class UserPortal:
             return
     
     def login(self) -> bool:
-        """Handle user login with role selection."""
+
         clear_screen()
         print_header("LOGIN")
         
-        # Show role selection menu
         print("\nSelect your role:")
         print("1. Student")
         print("2. Teacher")
@@ -398,11 +370,9 @@ class UserPortal:
         self.current_role = user_type
         self.current_id = user_id
         return True
-    
-    # ====== STUDENT PORTAL ======
-    
+
     def student_main_menu(self):
-        """Display student main menu."""
+
         clear_screen()
         print_header(f"STUDENT PORTAL - {self.current_user}")
         print(f"\nStudent ID: {self.current_id}")
@@ -414,7 +384,7 @@ class UserPortal:
         print("\n" + "-" * 60)
     
     def student_view_info(self):
-        """Student views their personal information."""
+
         student = self.student_mgr.get_student(self.current_id)
         if not student:
             print("Student information not found.")
@@ -437,7 +407,7 @@ class UserPortal:
         input("\nPress Enter to continue...")
     
     def student_view_grades(self):
-        """Student views their grades and GPA."""
+
         student = self.student_mgr.get_student(self.current_id)
         if not student:
             print("Student not found.")
@@ -479,7 +449,7 @@ class UserPortal:
         input("\nPress Enter to continue...")
     
     def student_view_attendance(self):
-        """Student views their attendance records."""
+
         subjects = self.student_mgr.get_student_subjects(self.current_id)
         
         if not subjects:
@@ -520,7 +490,7 @@ class UserPortal:
         input("\nPress Enter to continue...")
     
     def student_change_password(self):
-        """Student changes their password."""
+
         print_section("CHANGE PASSWORD")
         
         old_password = safe_string_input("Current password: ")
@@ -557,11 +527,9 @@ class UserPortal:
         
         print("✓ Password changed successfully.")
         input("Press Enter to continue...")
-    
-    # ====== TEACHER PORTAL ======
-    
+
     def teacher_main_menu(self):
-        """Display teacher main menu."""
+
         clear_screen()
         print_header(f"TEACHER PORTAL - {self.current_user}")
         print(f"\nTeacher ID: {self.current_id}")
@@ -573,7 +541,7 @@ class UserPortal:
         print("\n" + "-" * 60)
     
     def teacher_view_schedule(self):
-        """Teacher views their schedule."""
+
         teacher = self.teacher_mgr.get_teacher(self.current_id)
         if not teacher:
             print("Teacher information not found.")
@@ -607,7 +575,7 @@ class UserPortal:
         input("\nPress Enter to continue...")
     
     def teacher_input_grades(self):
-        """Teacher inputs grades for students."""
+
         print_section("INPUT GRADES")
         
         teacher = self.teacher_mgr.get_teacher(self.current_id)
@@ -626,7 +594,6 @@ class UserPortal:
         
         section = teacher.class_sessions[choice - 1]
         
-        # Get students in section
         section_students = self.student_mgr.get_students_by_section(section)
         if not section_students:
             print("No students in this section.")
@@ -659,7 +626,6 @@ class UserPortal:
         
         subject = subjects[choice - 1]
         
-        # Input grade
         print(f"\nEnter grade for {student.name} in {subject}:")
         print("Exam types: midterm, final, quiz")
         
@@ -673,12 +639,11 @@ class UserPortal:
         if score is None:
             return
         
-        # This would integrate with the grade input system in main.py
         print(f"✓ Grade recorded: {student.name} - {subject} ({exam_type}): {score}")
         input("Press Enter to continue...")
     
     def teacher_input_attendance(self):
-        """Teacher inputs attendance for students."""
+
         print_section("INPUT ATTENDANCE")
         
         teacher = self.teacher_mgr.get_teacher(self.current_id)
@@ -737,12 +702,11 @@ class UserPortal:
             input("Press Enter to continue...")
             return
         
-        # This would integrate with the attendance system in main.py
         print(f"✓ Attendance recorded: {student.name} - {subject}: {status}")
         input("Press Enter to continue...")
     
     def teacher_change_password(self):
-        """Teacher changes their password."""
+
         print_section("CHANGE PASSWORD")
         
         old_password = safe_string_input("Current password: ")
@@ -779,11 +743,9 @@ class UserPortal:
         
         print("✓ Password changed successfully.")
         input("Press Enter to continue...")
-    
-    # ====== PARENT PORTAL ======
-    
+
     def parent_main_menu(self):
-        """Display parent main menu."""
+
         clear_screen()
         print_header(f"PARENT PORTAL - {self.current_user}")
         print(f"\nParent ID: {self.current_id}")
@@ -803,7 +765,7 @@ class UserPortal:
         print("\n" + "-" * 60)
     
     def parent_view_child_info(self):
-        """Parent views child's information."""
+
         parent = self.comm_mgr.get_parent(self.current_id)
         
         if not parent or not parent.student_ids:
@@ -848,7 +810,7 @@ class UserPortal:
         input("\nPress Enter to continue...")
     
     def parent_view_academics(self):
-        """Parent views child's grades and attendance."""
+
         parent = self.comm_mgr.get_parent(self.current_id)
         
         if not parent or not parent.student_ids:
@@ -914,7 +876,7 @@ class UserPortal:
         input("\nPress Enter to continue...")
     
     def parent_view_fee_balance(self):
-        """Parent views fee balance."""
+
         parent = self.comm_mgr.get_parent(self.current_id)
         
         if not parent or not parent.student_ids:
@@ -932,21 +894,18 @@ class UserPortal:
             if student:
                 print(f"\n{i}. {student.name} ({student_id})")
                 
-                # Get all invoices for this student
                 invoices = self.fee_mgr.get_student_invoices(student_id)
                 
                 if not invoices:
                     print("   No invoices generated")
                     continue
                 
-                # Calculate balance for this student
                 student_balance = 0.0
                 for invoice in invoices:
                     total_paid = self.fee_mgr.get_total_paid(invoice.invoice_id)
                     balance = invoice.amount - total_paid
                     student_balance += balance
                 
-                # Display in Pakistani Rupees
                 if student_balance > 0:
                     print(f"   Fee Balance: ₨ {student_balance:,.2f}")
                 else:
@@ -964,7 +923,7 @@ class UserPortal:
         input("\nPress Enter to continue...")
     
     def parent_view_notifications(self):
-        """Parent views notifications."""
+
         notifications = self.comm_mgr.get_parent_notifications(self.current_id)
         
         if not notifications:
@@ -994,7 +953,7 @@ class UserPortal:
         input("\nPress Enter to continue...")
     
     def parent_request_meeting(self):
-        """Parent requests meeting with teacher."""
+
         print_section("REQUEST MEETING WITH TEACHER")
         
         parent = self.comm_mgr.get_parent(self.current_id)
@@ -1023,10 +982,8 @@ class UserPortal:
         
         message = safe_string_input("Brief description: ")
         
-        # Get all teachers
         teachers = self.teacher_mgr.list_teachers()
         if teachers:
-            # Create notification for all teachers (they can see all meeting requests)
             notif_msg = f"{parent.name} (Parent of {student.name}) has requested a meeting.\n\nPurpose: {subject}\n\nDescription: {message}"
             print(f"✓ Meeting request sent to all teachers")
         else:
@@ -1035,7 +992,7 @@ class UserPortal:
         input("Press Enter to continue...")
     
     def parent_send_message(self):
-        """Parent sends message to teacher/staff."""
+
         print_section("SEND MESSAGE TO TEACHER/STAFF")
         
         parent = self.comm_mgr.get_parent(self.current_id)
@@ -1045,7 +1002,6 @@ class UserPortal:
             input("Press Enter to continue...")
             return
         
-        # Select student context
         print("Message regarding which child?")
         for i, student_id in enumerate(parent.student_ids, 1):
             student = self.student_mgr.get_student(student_id)
@@ -1058,7 +1014,6 @@ class UserPortal:
         
         student_id = parent.student_ids[choice - 1]
         
-        # Get available teachers for this student
         student = self.student_mgr.get_student(student_id)
         teachers = self.teacher_mgr.list_teachers()
         
@@ -1081,13 +1036,12 @@ class UserPortal:
         if not message:
             return
         
-        # Send message/create notification
         print(f"\n✓ Message sent to {teacher.name}")
         print("Teacher will receive a notification about your inquiry.")
         input("Press Enter to continue...")
     
     def parent_change_password(self):
-        """Parent changes their password."""
+
         print_section("CHANGE PASSWORD")
         
         old_password = safe_string_input("Current password: ")
@@ -1124,11 +1078,9 @@ class UserPortal:
         
         print("✓ Password changed successfully.")
         input("Press Enter to continue...")
-    
-    # ====== MAIN PORTAL ======
-    
+
     def run(self):
-        """Run the unified portal."""
+
         while True:
             choice = self.show_auth_menu()
             
@@ -1147,7 +1099,7 @@ class UserPortal:
                 input("Press Enter to continue...")
     
     def _run_role_portal(self):
-        """Run the appropriate portal based on user role."""
+
         if self.current_role == "student":
             self._run_student_portal()
         elif self.current_role == "teacher":
@@ -1156,7 +1108,7 @@ class UserPortal:
             self._run_parent_portal()
     
     def _run_student_portal(self):
-        """Run student portal."""
+
         while True:
             self.student_main_menu()
             choice = safe_string_input("Choose option: ")
@@ -1179,7 +1131,7 @@ class UserPortal:
                 input("Press Enter to continue...")
     
     def _run_teacher_portal(self):
-        """Run teacher portal."""
+
         while True:
             self.teacher_main_menu()
             choice = safe_string_input("Choose option: ")
@@ -1202,7 +1154,7 @@ class UserPortal:
                 input("Press Enter to continue...")
     
     def _run_parent_portal(self):
-        """Run parent portal."""
+
         while True:
             self.parent_main_menu()
             choice = safe_string_input("Choose option: ")
@@ -1229,7 +1181,6 @@ class UserPortal:
             else:
                 print("Invalid option.")
                 input("Press Enter to continue...")
-
 
 if __name__ == "__main__":
     portal = UserPortal()
