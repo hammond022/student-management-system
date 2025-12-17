@@ -617,10 +617,10 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        available_subjects = [s for s in subjects if s not in student.exempted_subjects]
+        available_subjects = [s for s in subjects if s not in student.dropped_subjects]
         
         if not available_subjects:
-            print(f"\n{student.name} is exempted from all subjects in their section.")
+            print(f"\n{student.name} has dropped all subjects in their section.")
             input("Press Enter to continue...")
             return
         
@@ -657,9 +657,22 @@ class AdminPortal:
                 exam_map = {1: "prelim", 2: "midterm", 3: "finals"}
                 exam_type = exam_map[exam_choice]
                 
+                # Check if a grade is already recorded for this exam
+                existing_scores = self.student_mgr.get_exam_scores(student_id, subject)
+                already_recorded = False
+                if existing_scores and existing_scores.get(exam_type) is not None:
+                    print(f"A grade is already recorded for {exam_type.capitalize()}: {existing_scores[exam_type]}")
+                    confirm = safe_string_input("Do you want to replace it? (y/n): ").strip().lower()
+                    if confirm != 'y':
+                        print("Grade not replaced.")
+                        input("Press Enter to continue...")
+                        continue
+                    already_recorded = True
                 score = safe_int_input("Enter score (0-100): ", 0, 100)
                 if score is not None:
                     success, msg = self.student_mgr.record_exam(student_id, subject, exam_type, float(score))
+                    if already_recorded and success:
+                        msg = f"Replaced previous grade. {msg}"
                     print(f"{'✓' if success else '✗'} {msg}")
                     input("Press Enter to continue...")
             
@@ -692,7 +705,7 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        available_subjects = [s for s in subjects if s not in student.exempted_subjects]
+        available_subjects = [s for s in subjects if s not in student.dropped_subjects]
         
         print("\nSubject Grades:")
         if available_subjects:
@@ -703,7 +716,7 @@ class AdminPortal:
                 else:
                     print(f"{subject}: No grades recorded yet")
         else:
-            print("Student is exempted from all subjects in their section.")
+            print("Student has dropped all subjects in their section.")
         
         gpa = self.student_mgr.get_gpa(student_id)
         if gpa:
@@ -731,10 +744,10 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        available_subjects = [s for s in subjects if s not in student.exempted_subjects]
+        available_subjects = [s for s in subjects if s not in student.dropped_subjects]
         
         if not available_subjects:
-            print("\nStudent is exempted from all subjects in their section.")
+            print("\nStudent has dropped all subjects in their section.")
             input("Press Enter to continue...")
             return
         
