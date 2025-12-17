@@ -1374,11 +1374,12 @@ class AdminPortal:
             print("\n1. Manage Fee Structures")
             print("2. Manage Particulars")
             print("3. Generate Enrollment Invoice for Section")
-            print("4. Create Custom Invoice")
-            print("5. Record Payment")
-            print("6. View Invoices")
-            print("7. Manage Payroll")
-            print("8. Financial Reports")
+            print("4. Generate Enrollment Invoice for Student")
+            print("5. Create Custom Invoice")
+            print("6. Record Payment")
+            print("7. View Invoices")
+            print("8. Manage Payroll")
+            print("9. Financial Reports")
             print("0. Back to Main Menu")
             print("-" * 60)
             
@@ -1393,14 +1394,16 @@ class AdminPortal:
             elif choice == "3":
                 self.generate_enrollment_invoice_for_section()
             elif choice == "4":
-                self.create_custom_invoice()
+                self.generate_enrollment_invoice_for_student()
             elif choice == "5":
-                self.record_payment()
+                self.create_custom_invoice()
             elif choice == "6":
-                self.view_invoices()
+                self.record_payment()
             elif choice == "7":
-                self.manage_payroll()
+                self.view_invoices()
             elif choice == "8":
+                self.manage_payroll()
+            elif choice == "9":
                 self.financial_reports()
             else:
                 print("Invalid option. Please try again.")
@@ -1753,14 +1756,33 @@ class AdminPortal:
         if not due_date:
             return
         
+        # Optional discount per student
+        discount_input = safe_string_input("\nDiscount per student in ₱ (leave blank for none): ", allow_empty=True)
+        discount_value = 0.0
+        if discount_input:
+            try:
+                discount_value = float(discount_input)
+                if discount_value < 0:
+                    print("Discount cannot be negative.")
+                    input("Press Enter to continue...")
+                    return
+            except ValueError:
+                print("Invalid discount value.")
+                input("Press Enter to continue...")
+                return
+        discount_desc = ""
+        if discount_value and discount_value > 0:
+            discount_desc = safe_string_input("Discount description (optional): ", allow_empty=True) or ""
+
         confirm = safe_string_input(f"\nGenerate {len(students_in_section)} invoices for {section_key}? (yes/no): ")
         if not (confirm and confirm.lower() == "yes"):
             print("Cancelled.")
             input("Press Enter to continue...")
             return
-        
+
         success, invoice_ids = self.fee_mgr.generate_invoices_for_section(
-            course_code, year, students_in_section, due_date
+            course_code, year, students_in_section, due_date,
+            discount_per_student=discount_value, discount_description=discount_desc
         )
         
         if success:
@@ -1769,6 +1791,98 @@ class AdminPortal:
         else:
             print(f"\n✗ Error: {invoice_ids[0] if invoice_ids else 'Unknown error'}")
         
+        input("Press Enter to continue...")
+
+    def generate_enrollment_invoice_for_student(self):
+
+        student_id = safe_string_input("Enter student ID: ")
+        if not student_id:
+            return
+
+        student = self.student_mgr.get_student(student_id)
+        if not student:
+            print("Student not found.")
+            input("Press Enter to continue...")
+            return
+
+        # parse section from student's section value (COURSE-YEAR-SECTION)
+        parts = student.section.split("-")
+        if len(parts) != 3:
+            print("Student section is invalid. Cannot determine course-year.")
+            input("Press Enter to continue...")
+            return
+
+        course_code = parts[0]
+        try:
+            year = int(parts[1])
+        except ValueError:
+            print("Invalid year in student section.")
+            input("Press Enter to continue...")
+            return
+
+        fee_structure = self.fee_mgr.get_fee_structure(course_code, year)
+        if fee_structure is None:
+            print(f"No fee structure defined for {course_code}-{year}.")
+            print("Please create and configure the fee structure first.")
+            input("Press Enter to continue...")
+            return
+
+        total_fee = self.fee_mgr.calculate_total_fee(course_code, year)
+        if total_fee <= 0:
+            print(f"Fee structure for {course_code}-{year} is incomplete.")
+            print("Please add subjects and/or particulars to the fee structure.")
+            input("Press Enter to continue...")
+            return
+
+        clear_screen()
+        print_header(f"GENERATE ENROLLMENT INVOICE - {student.name}")
+        print(f"Course-Year: {course_code}-{year}")
+        print(f"Standard Fee: ₱{total_fee:.2f}")
+
+        breakdown = self.fee_mgr.get_fee_breakdown(course_code, year)
+        print("\nFee Breakdown:")
+        for item, amount in breakdown.items():
+            print(f"  {item}: ₱{amount:.2f}")
+
+        due_date = safe_string_input("\nDue date (YYYY-MM-DD): ")
+        if not due_date:
+            return
+
+        discount_input = safe_string_input("Discount in ₱ (leave blank for none): ", allow_empty=True)
+        discount_value = 0.0
+        if discount_input:
+            try:
+                discount_value = float(discount_input)
+                if discount_value < 0:
+                    print("Discount cannot be negative.")
+                    input("Press Enter to continue...")
+                    return
+            except ValueError:
+                print("Invalid discount value.")
+                input("Press Enter to continue...")
+                return
+        discount_desc = ""
+        if discount_value and discount_value > 0:
+            discount_desc = safe_string_input("Discount description (optional): ", allow_empty=True) or ""
+
+        print(f"\nInvoice Summary:")
+        print(f"Student: {student.name} ({student_id})")
+        net_amount = max(0.0, total_fee - discount_value)
+        print(f"Amount: ₱{net_amount:.2f} (Discount: ₱{discount_value:.2f})")
+        print(f"Due Date: {due_date}")
+
+        confirm = safe_string_input("\nCreate this invoice? (yes/no): ")
+        if not (confirm and confirm.lower() == "yes"):
+            print("Cancelled.")
+            input("Press Enter to continue...")
+            return
+
+        success, result = self.fee_mgr.generate_invoice_for_student(student_id, course_code, year, due_date, discount=discount_value, discount_description=discount_desc)
+        if success:
+            print(f"\n✓ Invoice created: {result}")
+        else:
+            print(f"\n✗ Error: {result}")
+
         input("Press Enter to continue...")
     
     def create_custom_invoice(self):
