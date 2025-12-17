@@ -13,7 +13,7 @@ class ParentAccount:
         self.parent_id = parent_id
         self.name = name
         self.email = email
-        self.phone = phone
+        self.phone = phone 
         self.student_ids = student_ids  # IDs of children
         self.account_status = "active"
         self.created_date = datetime.now().strftime("%Y-%m-%d")
@@ -273,7 +273,7 @@ class CommunicationManager:
                                 amount: float, due_date: str) -> Tuple[bool, str]:
       
         subject_line = f"Fee Due: {student_name}"
-        message = f"An invoice of ${amount:.2f} is due by {due_date} for {student_name}"
+        message = f"An invoice of ₱{amount:.2f} is due by {due_date} for {student_name}"
         return self.send_notification(parent_id, subject_line, message, "fee")
     
     def notify_parent_about_event(self, parent_ids: List[str], event_name: str,
