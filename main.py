@@ -217,7 +217,7 @@ class AdminPortal:
         while True:
             clear_screen()
             print_header("STUDENT & ACADEMIC MANAGEMENT")
-            print("\n1. Create Student")
+            print("\n1. Add Student")
             print("2. View All Students")
             print("3. View Student Details")
             print("0. Back to Main Menu")
@@ -353,7 +353,7 @@ class AdminPortal:
     
     def create_student(self):
 
-        print_section("CREATE NEW STUDENT")
+        print_section("ADD NEW STUDENT")
         
         name = get_full_name()
         if not name:
