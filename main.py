@@ -503,47 +503,52 @@ class AdminPortal:
             print(f"\nSection Subjects ({len(section_subjects)} total):")
             
             for i, subject in enumerate(section_subjects, 1):
-                if subject in student.exempted_subjects:
-                    print(f"{i}. {subject} [EXEMPTED]")
+                if subject in student.dropped_subjects:
+                    print(f"{i}. {subject} [DROPPED: {student.dropped_subjects[subject]}]")
                 else:
                     print(f"{i}. {subject}")
-            
-            print("\n1. Exempt Student from Subject")
-            print("2. Remove Subject Exemption")
+
+            print("\n1. Drop Student from Subject")
+            print("2. Undo Subject Drop")
             print("0. Back")
-            
+
             choice = safe_string_input("Choose option: ")
-            
+
             if choice == "0":
                 break
             elif choice == "1":
-                print("\nSelect subject to exempt from:")
+                print("\nSelect subject to drop:")
                 for i, subject in enumerate(section_subjects, 1):
-                    status = "[EXEMPTED]" if subject in student.exempted_subjects else ""
+                    status = "[DROPPED]" if subject in student.dropped_subjects else ""
                     print(f"{i}. {subject} {status}")
-                
+
                 subject_choice = safe_int_input("Subject number (0 to cancel): ", 0, len(section_subjects))
                 if subject_choice and subject_choice > 0:
                     subject = section_subjects[subject_choice - 1]
-                    success, msg = self.student_mgr.exempt_subject(student_id, subject)
+                    if subject in student.dropped_subjects:
+                        print("\nSubject already dropped.")
+                        input("Press Enter to continue...")
+                        continue
+                    reason = safe_string_input("Enter reason for dropping this subject: ")
+                    success, msg = self.student_mgr.drop_subject(student_id, subject, reason)
                     print(f"\n{'✓' if success else '✗'} {msg}")
                     input("Press Enter to continue...")
-            
+
             elif choice == "2":
-                exempted = [s for s in section_subjects if s in student.exempted_subjects]
-                if not exempted:
-                    print("\nNo exempted subjects.")
+                dropped = [s for s in section_subjects if s in student.dropped_subjects]
+                if not dropped:
+                    print("\nNo dropped subjects.")
                     input("Press Enter to continue...")
                     continue
-                
-                print("\nSelect subject to remove exemption from:")
-                for i, subject in enumerate(exempted, 1):
-                    print(f"{i}. {subject}")
-                
-                subject_choice = safe_int_input("Subject number (0 to cancel): ", 0, len(exempted))
+
+                print("\nSelect subject to undo drop:")
+                for i, subject in enumerate(dropped, 1):
+                    print(f"{i}. {subject} [Reason: {student.dropped_subjects[subject]}]")
+
+                subject_choice = safe_int_input("Subject number (0 to cancel): ", 0, len(dropped))
                 if subject_choice and subject_choice > 0:
-                    subject = exempted[subject_choice - 1]
-                    success, msg = self.student_mgr.unexempt_subject(student_id, subject)
+                    subject = dropped[subject_choice - 1]
+                    success, msg = self.student_mgr.undo_drop_subject(student_id, subject)
                     print(f"\n{'✓' if success else '✗'} {msg}")
                     input("Press Enter to continue...")
 
@@ -563,10 +568,10 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        available_subjects = [s for s in subjects if s not in student.exempted_subjects]
+        available_subjects = [s for s in subjects if s not in student.dropped_subjects]
         
         if not available_subjects:
-            print(f"\n{student.name} is exempted from all subjects in their section.")
+            print(f"\n{student.name} has dropped all subjects in their section.")
             input("Press Enter to continue...")
             return
         
