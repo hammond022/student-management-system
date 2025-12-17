@@ -1490,21 +1490,50 @@ class AdminPortal:
             if choice == "0":
                 break
             elif choice == "1":
-                course_code = safe_string_input("\nCourse code (e.g., BSIT): ")
-                if not course_code:
+        
+                courses = self.course_mgr.list_courses()
+                options = []
+                for code, cdata in courses:
+                    sections = cdata.get("sections", {})
+                    for year_str, year_sections in sections.items():
+                        try:
+                            year_int = int(year_str)
+                        except ValueError:
+                            continue
+           
+                        if year_sections:
+                            options.append((f"{code}-{year_int}", code, year_int))
+
+                if not options:
+                    print("\nNo courses/years found. Please create a course and section first.")
+                    input("Press Enter to continue...")
                     continue
-                
-                year = safe_int_input("Year (1-4): ", 1, 4)
-                if year is None:
+
+                page = 1
+                chosen = None
+                while True:
+                    page, selected = display_page([o[0] for o in options], page, "Select COURSE-YEAR")
+                    if selected == -1:
+                        break
+                    if selected is None:
+                        continue
+                    chosen = options[selected]
+                    break
+
+                if chosen is None:
+             
                     continue
-                
+
+                course_code = chosen[1]
+                year = chosen[2]
+
                 section = self.course_mgr.get_section(course_code, year, 1)
                 if section is None:
                     print(f"\n✗ Error: Course {course_code} Year {year} does not exist in the system.")
                     print("Please create the course and enrollment first.")
                     input("Press Enter to continue...")
                     continue
-                
+
                 success, fee_structure = self.fee_mgr.create_fee_structure(course_code, year)
                 if success:
                     print(f"\n✓ Fee structure created for {course_code}-{year}")
