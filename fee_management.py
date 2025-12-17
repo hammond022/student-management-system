@@ -640,16 +640,17 @@ class FeeManager:
     def get_total_fees_collected(self) -> float:
 
         total = 0.0
-        for invoice in self.invoices.values():
-            if invoice.status == "paid":
-                total += invoice.amount
+        for payment in self.payments.values():
+            total += payment.amount
         return total
     
     def get_outstanding_fees(self) -> float:
         total = 0.0
         for invoice in self.invoices.values():
-            if invoice.status in ["pending", "overdue"]:
-                total += invoice.amount
+            amount_paid = self.get_total_paid(invoice.invoice_id)
+            remaining = invoice.amount - amount_paid
+            if remaining > 0:
+                total += remaining
         return total
     
     def get_total_payroll_expenses(self, payout_period: str = None) -> float:
