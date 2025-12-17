@@ -102,7 +102,7 @@ class Student:
         self.enrollment_date = None
         self.enrollment_status = "active"
         self.subjects = {}  # subject_name -> {attendance, exams, activities}
-        self.exempted_subjects = []  # List of subjects student is exempted from
+        self.dropped_subjects = {}  # subject_name -> reason
         self.disciplinary_records = []  # List of DisciplinaryRecord IDs
         self.academic_history = []  # List of AcademicSnapshot IDs for archived records
     
@@ -223,39 +223,29 @@ class StudentManager:
         self.save_students()
         return True, f"Student unenrolled from {subject_name}"
     
-    def exempt_subject(self, student_id: str, subject_name: str) -> Tuple[bool, str]:
-
+    def drop_subject(self, student_id: str, subject_name: str, reason: str) -> Tuple[bool, str]:
         if student_id not in self.students:
             return False, "Student not found"
-        
         student = self.students[student_id]
-        
-        if subject_name in student.exempted_subjects:
-            return False, "Student is already exempted from this subject"
-        
-        student.exempted_subjects.append(subject_name)
+        if subject_name in student.dropped_subjects:
+            return False, "Student has already dropped this subject"
+        student.dropped_subjects[subject_name] = reason
         self.save_students()
-        return True, f"Student exempted from {subject_name}"
+        return True, f"Student dropped {subject_name}. Reason: {reason}"
     
-    def unexempt_subject(self, student_id: str, subject_name: str) -> Tuple[bool, str]:
-
+    def undo_drop_subject(self, student_id: str, subject_name: str) -> Tuple[bool, str]:
         if student_id not in self.students:
             return False, "Student not found"
-        
         student = self.students[student_id]
-        
-        if subject_name not in student.exempted_subjects:
-            return False, "Student is not exempted from this subject"
-        
-        student.exempted_subjects.remove(subject_name)
+        if subject_name not in student.dropped_subjects:
+            return False, "Subject is not dropped for this student"
+        del student.dropped_subjects[subject_name]
         self.save_students()
-        return True, f"Student exemption removed from {subject_name}"
+        return True, f"Drop removed for {subject_name}"
     
     def get_student_subjects(self, student_id: str) -> List[str]:
-
         if student_id not in self.students:
             return []
-        
         return list(self.students[student_id].subjects.keys())
     
     def _ensure_subject_initialized(self, student_id: str, subject_name: str) -> Tuple[bool, str]:
