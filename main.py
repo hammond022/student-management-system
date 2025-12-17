@@ -1427,7 +1427,7 @@ class AdminPortal:
                 if not name:
                     continue
                 
-                amount = safe_int_input("Amount ($): ", 1)
+                amount = safe_int_input("Amount (₱): ", 1)
                 if amount is None:
                     continue
                 
@@ -1442,7 +1442,7 @@ class AdminPortal:
                 if particulars:
                     print("\nAll Particulars:")
                     for particular in particulars:
-                        print(f"- {particular.name}: ${particular.amount:.2f}")
+                        print(f"- {particular.name}: ₱{particular.amount:.2f}")
                         if particular.description:
                             print(f"  ({particular.description})")
                 else:
@@ -1454,7 +1454,7 @@ class AdminPortal:
                 if not name:
                     continue
                 
-                amount = safe_int_input("New amount ($, leave blank to skip): ", 1)
+                amount = safe_int_input("New amount (₱, leave blank to skip): ", 1)
                 description = safe_string_input("New description (leave blank to skip): ")
                 
                 success, msg = self.fee_mgr.update_particular(name, float(amount) if amount else None, 
@@ -1518,7 +1518,7 @@ class AdminPortal:
                     print("\nAll Fee Structures:")
                     for struct in structures:
                         total = self.fee_mgr.calculate_total_fee(struct.course_code, struct.year)
-                        print(f"- {struct.course_code}-{struct.year}: ${total:.2f}")
+                        print(f"- {struct.course_code}-{struct.year}: ₱{total:.2f}")
                 else:
                     print("\nNo fee structures found.")
                 input("Press Enter to continue...")
@@ -1572,17 +1572,17 @@ class AdminPortal:
             available_subjects = section.get("subjects", [])
             total_fee = self.fee_mgr.calculate_total_fee(course_code, year)
             
-            print(f"\nTotal Fee: ${total_fee:.2f}")
+            print(f"\nTotal Fee: ₱{total_fee:.2f}")
             print(f"\nConfigured Subjects ({len(fee_structure.subject_fees)}):")
             for subject, fee in fee_structure.subject_fees.items():
-                print(f"  - {subject}: ${fee.amount:.2f}")
+                print(f"  - {subject}: ₱{fee.amount:.2f}")
             
             print(f"\nConfigured Particulars ({len(fee_structure.selected_particulars)}):")
             if fee_structure.selected_particulars:
                 for particular_name in fee_structure.selected_particulars:
                     particular = self.fee_mgr.get_particular(particular_name)
                     if particular:
-                        print(f"  - {particular_name}: ${particular.amount:.2f}")
+                        print(f"  - {particular_name}: ₱{particular.amount:.2f}")
             else:
                 print("  (None selected)")
             
@@ -1611,7 +1611,7 @@ class AdminPortal:
                     continue
                 
                 subject = available_subjects[subject_choice - 1]
-                amount = safe_int_input(f"Fee for {subject} ($): ", 1)
+                amount = safe_int_input(f"Fee for {subject} (₱): ", 1)
                 if amount is None:
                     continue
                 
@@ -1629,7 +1629,7 @@ class AdminPortal:
                 print("\nAvailable Particulars:")
                 for i, particular in enumerate(particulars, 1):
                     status = "✓" if particular.name in fee_structure.selected_particulars else " "
-                    print(f"{i}. [{status}] {particular.name}: ${particular.amount:.2f}")
+                    print(f"{i}. [{status}] {particular.name}: ₱{particular.amount:.2f}")
                 
                 particular_choice = safe_int_input("Select particular (number): ", 1, len(particulars))
                 if particular_choice is None:
@@ -1711,14 +1711,14 @@ class AdminPortal:
         clear_screen()
         print_header(f"GENERATE INVOICES - {section_key}")
         print(f"\nNumber of students: {len(students_in_section)}")
-        print(f"Fee per student: ${total_fee:.2f}")
+        print(f"Fee per student: ₱{total_fee:.2f}")
         print(f"Total invoices to generate: {len(students_in_section)}")
-        print(f"Total amount: ${total_fee * len(students_in_section):.2f}")
+        print(f"Total amount: ₱{total_fee * len(students_in_section):.2f}")
         
         breakdown = self.fee_mgr.get_fee_breakdown(course_code, year)
         print("\nFee Breakdown:")
         for item, amount in breakdown.items():
-            print(f"  {item}: ${amount:.2f}")
+            print(f"  {item}: ₱{amount:.2f}")
         
         due_date = safe_string_input("\nDue date (YYYY-MM-DD): ")
         if not due_date:
@@ -1779,7 +1779,7 @@ class AdminPortal:
         clear_screen()
         print_header(f"CREATE CUSTOM INVOICE - {student.name}")
         
-        amount = safe_int_input("Invoice amount ($): ", 1)
+        amount = safe_int_input("Invoice amount (₱): ", 1)
         if amount is None:
             return
         
@@ -1790,7 +1790,7 @@ class AdminPortal:
         
         print(f"\nInvoice Summary:")
         print(f"Student: {student.name} ({student_id})")
-        print(f"Amount: ${float(amount):.2f}")
+        print(f"Amount: ₱{float(amount):.2f}")
         if description:
             print(f"Description: {description}")
         print(f"Due Date: {due_date}")
@@ -1844,7 +1844,7 @@ class AdminPortal:
         clear_screen()
         print_header(f"CREATE CUSTOM INVOICE - {section_key}")
         
-        amount = safe_int_input("Invoice amount per student ($): ", 1)
+        amount = safe_int_input("Invoice amount per student (₱): ", 1)
         if amount is None:
             return
         
@@ -1856,8 +1856,8 @@ class AdminPortal:
         print(f"\nInvoice Summary:")
         print(f"Section: {section_key}")
         print(f"Number of students: {len(students_in_section)}")
-        print(f"Amount per student: ${float(amount):.2f}")
-        print(f"Total amount: ${float(amount) * len(students_in_section):.2f}")
+        print(f"Amount per student: ₱{float(amount):.2f}")
+        print(f"Total amount: ₱{float(amount) * len(students_in_section):.2f}")
         if description:
             print(f"Description: {description}")
         print(f"Due Date: {due_date}")
@@ -1895,12 +1895,12 @@ class AdminPortal:
         print(f"\nStudent ID: {invoice.student_id}")
         if invoice.course_code != "CUSTOM":
             print(f"Course-Year: {invoice.course_code}-{invoice.year}")
-        print(f"Amount Due: ${invoice.amount:.2f}")
+        print(f"Amount Due: ₱{invoice.amount:.2f}")
         
         if invoice.breakdown:
             print(f"\nBreakdown:")
             for item, amount in invoice.breakdown.items():
-                print(f"  {item}: ${amount:.2f}")
+                print(f"  {item}: ₱{amount:.2f}")
         
         paid = self.fee_mgr.get_total_paid(invoice_id)
         remaining = invoice.amount - paid
@@ -1910,15 +1910,15 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         else:
-            print(f"\nAmount Paid: ${paid:.2f}")
-            print(f"Remaining: ${remaining:.2f}")
+            print(f"\nAmount Paid: ₱{paid:.2f}")
+            print(f"Remaining: ₱{remaining:.2f}")
         
-        amount = safe_int_input("\nPayment amount ($): ", 1)
+        amount = safe_int_input("\nPayment amount (₱): ", 1)
         if amount is None:
             return
         
         if float(amount) > remaining:
-            print(f"\n✗ Error: Payment amount (${float(amount):.2f}) exceeds remaining balance (${remaining:.2f})")
+            print(f"\n✗ Error: Payment amount (₱{float(amount):.2f}) exceeds remaining balance (₱{remaining:.2f})")
             input("Press Enter to continue...")
             return
         
@@ -1948,12 +1948,12 @@ class AdminPortal:
         print(f"Student ID: {invoice.student_id}")
         if invoice.course_code != "CUSTOM":
             print(f"Course-Year: {invoice.course_code}-{invoice.year}")
-        print(f"Amount Due: ${invoice.amount:.2f}")
+        print(f"Amount Due: ₱{invoice.amount:.2f}")
         
         if invoice.breakdown:
             print(f"\nBreakdown:")
             for item, amount in invoice.breakdown.items():
-                print(f"  {item}: ${amount:.2f}")
+                print(f"  {item}: ₱{amount:.2f}")
         
         paid = self.fee_mgr.get_total_paid(invoice_id)
         remaining = invoice.amount - paid
@@ -1963,15 +1963,15 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         else:
-            print(f"Amount Paid: ${paid:.2f}")
-            print(f"Remaining: ${remaining:.2f}")
+            print(f"Amount Paid: ₱{paid:.2f}")
+            print(f"Remaining: ₱{remaining:.2f}")
         
-        amount = safe_int_input("Payment amount ($): ", 1)
+        amount = safe_int_input("Payment amount (₱): ", 1)
         if amount is None:
             return
         
         if float(amount) > remaining:
-            print(f"\n✗ Error: Payment amount (${float(amount):.2f}) exceeds remaining balance (${remaining:.2f})")
+            print(f"\n✗ Error: Payment amount (₱{float(amount):.2f}) exceeds remaining balance (₱{remaining:.2f})")
             input("Press Enter to continue...")
             return
         
@@ -2038,12 +2038,12 @@ class AdminPortal:
                             print(f"\n[{idx}] {inv.invoice_id} ({inv.course_code}-{inv.year})")
                         else:
                             print(f"\n[{idx}] {inv.invoice_id}")
-                        print(f"     Amount: ${inv.amount:.2f}")
+                        print(f"     Amount: ₱{inv.amount:.2f}")
                         
                         if inv.breakdown:
                             print(f"     Breakdown:")
                             for item, amount in inv.breakdown.items():
-                                print(f"       {item}: ${amount:.2f}")
+                                print(f"       {item}: ₱{amount:.2f}")
                         
                         print(f"     Due Date: {inv.due_date}")
                         print(f"     Status: {inv.status}")
@@ -2051,7 +2051,7 @@ class AdminPortal:
                         paid = self.fee_mgr.get_total_paid(inv.invoice_id)
                         remaining = inv.amount - paid
                         if paid > 0:
-                            print(f"     Paid: ${paid:.2f} | Remaining: ${remaining:.2f}")
+                            print(f"     Paid: ₱{paid:.2f} | Remaining: ₱{remaining:.2f}")
                     
                     print("\n")
                     print(f"[Page {page + 1}/{total_pages}] (w: next, q: prev, 0: back, 1-{len(page_invoices)}: select)")
@@ -2106,9 +2106,9 @@ class AdminPortal:
                     total_collected = sum(self.fee_mgr.get_total_paid(inv.invoice_id) for inv in invoices)
                     total_due = sum(inv.amount for inv in invoices)
                     
-                    print(f"\nTotal Due: ${total_due:.2f}")
-                    print(f"Total Collected: ${total_collected:.2f}")
-                    print(f"Outstanding: ${total_due - total_collected:.2f}")
+                    print(f"\nTotal Due: ₱{total_due:.2f}")
+                    print(f"Total Collected: ₱{total_collected:.2f}")
+                    print(f"Outstanding: ₱{total_due - total_collected:.2f}")
                 else:
                     print("\nNo invoices found.")
                 
@@ -2132,9 +2132,9 @@ class AdminPortal:
                     total_collected = sum(self.fee_mgr.get_total_paid(inv.invoice_id) for inv in invoices)
                     total_due = sum(inv.amount for inv in invoices)
                     
-                    print(f"\nTotal Due: ${total_due:.2f}")
-                    print(f"Total Collected: ${total_collected:.2f}")
-                    print(f"Outstanding: ${total_due - total_collected:.2f}")
+                    print(f"\nTotal Due: ₱{total_due:.2f}")
+                    print(f"Total Collected: ₱{total_collected:.2f}")
+                    print(f"Outstanding: ₱{total_due - total_collected:.2f}")
                 else:
                     print("\nNo invoices found.")
                 
@@ -2215,7 +2215,7 @@ class AdminPortal:
                     for subject in sorted(subjects_set):
                         workload_rate = self.fee_mgr.get_workload_rate(subject)
                         if workload_rate:
-                            subjects_info.append(f"{subject}(${workload_rate.rate_per_day:.0f}/day)")
+                            subjects_info.append(f"{subject}(₱{workload_rate.rate_per_day:.0f}/day)")
                         else:
                             subjects_info.append(f"{subject}(no rate)")
                     print(f"     Subjects: {', '.join(subjects_info)}")
@@ -2225,7 +2225,7 @@ class AdminPortal:
                 print(f"     Payroll Records: {len(teacher_payroll)}")
                 if teacher_payroll:
                     latest = teacher_payroll[-1]
-                    print(f"     Latest: {latest.payout_period} - ${latest.net_salary:.2f}")
+                    print(f"     Latest: {latest.payout_period} - ₱{latest.net_salary:.2f}")
             
             print("\n" + "-" * 90)
             print(f"[Page {page + 1}/{total_pages}] (w: next, q: prev, 0: back, 1-{len(page_teachers)}: select)")
@@ -2284,7 +2284,7 @@ class AdminPortal:
                 for subject in subjects:
                     workload_rate = self.fee_mgr.get_workload_rate(subject)
                     if workload_rate:
-                        print(f"  • {subject}: ${workload_rate.rate_per_day:.2f}/day")
+                        print(f"  • {subject}: ₱{workload_rate.rate_per_day:.2f}/day")
                     else:
                         print(f"  • {subject}: (rate not configured)")
             else:
@@ -2294,7 +2294,7 @@ class AdminPortal:
             print(f"\nPayroll Records: {len(payroll_records)}")
             if payroll_records:
                 for p in payroll_records[-3:]:
-                    print(f"  {p.payout_period}: ${p.net_salary:.2f}")
+                    print(f"  {p.payout_period}: ₱{p.net_salary:.2f}")
             
             print("\n1. Process Payout")
             print("2. View Detailed Summary")
@@ -2360,7 +2360,7 @@ class AdminPortal:
         if bonuses:
             print(f"\nAvailable Bonuses:")
             for i, bonus in enumerate(bonuses, 1):
-                print(f"{i}. {bonus.name} - ${bonus.amount:.2f}")
+                print(f"{i}. {bonus.name} - ₱{bonus.amount:.2f}")
             
             print("\nEnter bonus numbers separated by commas (or leave empty for none)")
             bonus_input = safe_string_input("Selected bonuses: ", allow_empty=True)
@@ -2389,24 +2389,24 @@ class AdminPortal:
             print(f"\nTeacher: {teacher.name}")
             print(f"Period: {breakdown['payout_period']}")
             print(f"\nEarnings:")
-            print(f"  Base Salary: ${breakdown['base_salary']:.2f}")
-            print(f"  Workload ({days_present} days): ${breakdown['workload_earnings']:.2f}")
+            print(f"  Base Salary: ₱{breakdown['base_salary']:.2f}")
+            print(f"  Workload ({days_present} days): ₱{breakdown['workload_earnings']:.2f}")
             if breakdown['overtime_earnings'] > 0:
-                print(f"  Overtime ({overtime}h): ${breakdown['overtime_earnings']:.2f}")
+                print(f"  Overtime ({overtime}h): ₱{breakdown['overtime_earnings']:.2f}")
             if breakdown['bonus_amount'] > 0:
-                print(f"  Bonuses: ${breakdown['bonus_amount']:.2f}")
-            print(f"  Gross Salary: ${breakdown['gross_salary']:.2f}")
+                print(f"  Bonuses: ₱{breakdown['bonus_amount']:.2f}")
+            print(f"  Gross Salary: ₱{breakdown['gross_salary']:.2f}")
             
             print(f"\nDeductions:")
             if breakdown['tax_deduction'] > 0:
-                print(f"  Tax: ${breakdown['tax_deduction']:.2f}")
+                print(f"  Tax: ₱{breakdown['tax_deduction']:.2f}")
             if breakdown['sss_deduction'] > 0:
-                print(f"  SSS: ${breakdown['sss_deduction']:.2f}")
+                print(f"  SSS: ₱{breakdown['sss_deduction']:.2f}")
             if breakdown['absence_deduction'] > 0:
-                print(f"  Absence ({14 - days_present} days): ${breakdown['absence_deduction']:.2f}")
-            print(f"  Total Deductions: ${breakdown['total_deductions']:.2f}")
+                print(f"  Absence ({14 - days_present} days): ₱{breakdown['absence_deduction']:.2f}")
+            print(f"  Total Deductions: ₱{breakdown['total_deductions']:.2f}")
             
-            print(f"\nNet Salary: ${breakdown['net_salary']:.2f}")
+            print(f"\nNet Salary: ₱{breakdown['net_salary']:.2f}")
         
         confirm = safe_string_input("\nConfirm payout? (yes/no): ")
         if confirm and confirm.lower() == "yes":
@@ -2447,7 +2447,7 @@ class AdminPortal:
             for subject in sorted(subjects_set):
                 workload_rate = self.fee_mgr.get_workload_rate(subject)
                 if workload_rate:
-                    print(f"  • {subject}: ${workload_rate.rate_per_day:.2f}/day")
+                    print(f"  • {subject}: ₱{workload_rate.rate_per_day:.2f}/day")
                 else:
                     print(f"  • {subject}: (rate not configured)")
         else:
@@ -2455,29 +2455,29 @@ class AdminPortal:
         
         print(f"\nEarnings Configuration:")
         earnings_config = self.fee_mgr.earnings_config
-        print(f"  Base Salary: ${earnings_config.base_salary:.2f}")
+        print(f"  Base Salary: ₱{earnings_config.base_salary:.2f}")
         print(f"  Overtime Multiplier: {earnings_config.overtime_rate}x")
         print(f"  Available Bonuses: {len(earnings_config.bonuses)}")
         if earnings_config.bonuses:
             for bonus in earnings_config.bonuses.values():
-                print(f"    - {bonus.name}: ${bonus.amount:.2f}")
+                print(f"    - {bonus.name}: ₱{bonus.amount:.2f}")
         
         print(f"\nDeductions Configuration:")
         deduction_config = self.fee_mgr.deduction_config
         print(f"  Tax Rate: {deduction_config.tax_rate}%")
         print(f"  SSS Rate: {deduction_config.sss_rate}%")
-        print(f"  Absence Deduction: ${deduction_config.absence_deduction:.2f}/day")
+        print(f"  Absence Deduction: ₱{deduction_config.absence_deduction:.2f}/day")
         
         print(f"\nPayroll Records: {len(payroll_records)}")
         
         if payroll_records:
             total_paid = sum(p.net_salary for p in payroll_records)
             
-            print(f"  Total Paid: ${total_paid:.2f}")
+            print(f"  Total Paid: ₱{total_paid:.2f}")
             
             print(f"\nRecent Payouts:")
             for p in payroll_records[-3:]:
-                print(f"  ✓ {p.payout_period}: ${p.net_salary:.2f}")
+                print(f"  ✓ {p.payout_period}: ₱{p.net_salary:.2f}")
         
         input("\nPress Enter to continue...")
     
@@ -2521,7 +2521,7 @@ class AdminPortal:
                 
                 subject = available_subjects[subject_choice - 1]
                 
-                rate = safe_int_input("Pay rate per day ($): ", 1)
+                rate = safe_int_input("Pay rate per day (₱): ", 1)
                 if rate is None:
                     continue
                 
@@ -2534,7 +2534,7 @@ class AdminPortal:
                 if rates:
                     print("\nSubject Pay Rates:")
                     for rate in rates:
-                        print(f"  {rate.subject}: ${rate.rate_per_day:.2f}/day")
+                        print(f"  {rate.subject}: ₱{rate.rate_per_day:.2f}/day")
                 else:
                     print("\nNo pay rates configured yet.")
                 input("Press Enter to continue...")
@@ -2557,7 +2557,7 @@ class AdminPortal:
             if choice == "0":
                 break
             elif choice == "1":
-                amount = safe_int_input("\nBase salary ($): ", 0)
+                amount = safe_int_input("\nBase salary (₱): ", 0)
                 if amount is None:
                     continue
                 
@@ -2579,7 +2579,7 @@ class AdminPortal:
                 if not name:
                     continue
                 
-                amount = safe_int_input("Bonus amount ($): ", 1)
+                amount = safe_int_input("Bonus amount (₱): ", 1)
                 if amount is None:
                     continue
                 
@@ -2595,7 +2595,7 @@ class AdminPortal:
                 if bonuses:
                     print("\nAvailable Bonuses:")
                     for bonus in bonuses:
-                        print(f"  {bonus.bonus_id}: {bonus.name} - ${bonus.amount:.2f}")
+                        print(f"  {bonus.bonus_id}: {bonus.name} - ₱{bonus.amount:.2f}")
                 else:
                     print("\nNo bonuses configured yet.")
                 input("Press Enter to continue...")
@@ -2619,11 +2619,11 @@ class AdminPortal:
             print(f"\nCurrent Settings:")
             print(f"  Tax Rate: {config.tax_rate}%")
             print(f"  SSS Rate: {config.sss_rate}%")
-            print(f"  Absence Deduction: ${config.absence_deduction:.2f}/day")
+            print(f"  Absence Deduction: ₱{config.absence_deduction:.2f}/day")
             
             print("\n1. Set Tax Rate (%)")
             print("2. Set SSS Rate (%)")
-            print("3. Set Absence Deduction ($/day)")
+            print("3. Set Absence Deduction (₱/day)")
             print("0. Back")
             print("-" * 60)
             
@@ -2650,7 +2650,7 @@ class AdminPortal:
                 input("Press Enter to continue...")
             
             elif choice == "3":
-                amount = safe_int_input("\nAbsence deduction ($/day): ", 0)
+                amount = safe_int_input("\nAbsence deduction (₱/day): ", 0)
                 if amount is None:
                     continue
                 
@@ -2704,7 +2704,7 @@ class AdminPortal:
         print(f"\nTeacher Subjects (all included in payout):")
         for i, subject in enumerate(subjects, 1):
             rate = self.fee_mgr.get_workload_rate(subject)
-            rate_str = f"${rate.rate_per_day:.2f}/day" if rate else "(rate not set)"
+            rate_str = f"₱{rate.rate_per_day:.2f}/day" if rate else "(rate not set)"
             print(f"{i}. {subject} - {rate_str}")
         
         days_present = safe_int_input("Days present (0-14): ", 0, 14)
@@ -2721,7 +2721,7 @@ class AdminPortal:
         if bonuses:
             print(f"\nAvailable Bonuses:")
             for i, bonus in enumerate(bonuses, 1):
-                print(f"{i}. {bonus.name} - ${bonus.amount:.2f}")
+                print(f"{i}. {bonus.name} - ₱{bonus.amount:.2f}")
             
             print("\nEnter bonus numbers separated by commas (or leave empty for none)")
             bonus_input = safe_string_input("Selected bonuses: ", allow_empty=True)
@@ -2750,24 +2750,24 @@ class AdminPortal:
             print(f"\nTeacher: {teacher.name}")
             print(f"Period: {breakdown['payout_period']}")
             print(f"\nEarnings:")
-            print(f"  Base Salary: ${breakdown['base_salary']:.2f}")
-            print(f"  Workload ({days_present} days): ${breakdown['workload_earnings']:.2f}")
+            print(f"  Base Salary: ₱{breakdown['base_salary']:.2f}")
+            print(f"  Workload ({days_present} days): ₱{breakdown['workload_earnings']:.2f}")
             if breakdown['overtime_earnings'] > 0:
-                print(f"  Overtime ({overtime}h): ${breakdown['overtime_earnings']:.2f}")
+                print(f"  Overtime ({overtime}h): ₱{breakdown['overtime_earnings']:.2f}")
             if breakdown['bonus_amount'] > 0:
-                print(f"  Bonuses: ${breakdown['bonus_amount']:.2f}")
-            print(f"  Gross Salary: ${breakdown['gross_salary']:.2f}")
+                print(f"  Bonuses: ₱{breakdown['bonus_amount']:.2f}")
+            print(f"  Gross Salary: ₱{breakdown['gross_salary']:.2f}")
             
             print(f"\nDeductions:")
             if breakdown['tax_deduction'] > 0:
-                print(f"  Tax: ${breakdown['tax_deduction']:.2f}")
+                print(f"  Tax: ₱{breakdown['tax_deduction']:.2f}")
             if breakdown['sss_deduction'] > 0:
-                print(f"  SSS: ${breakdown['sss_deduction']:.2f}")
+                print(f"  SSS: ₱{breakdown['sss_deduction']:.2f}")
             if breakdown['absence_deduction'] > 0:
-                print(f"  Absence ({14 - days_present} days): ${breakdown['absence_deduction']:.2f}")
-            print(f"  Total Deductions: ${breakdown['total_deductions']:.2f}")
+                print(f"  Absence ({14 - days_present} days): ₱{breakdown['absence_deduction']:.2f}")
+            print(f"  Total Deductions: ₱{breakdown['total_deductions']:.2f}")
             
-            print(f"\nNet Salary: ${breakdown['net_salary']:.2f}")
+            print(f"\nNet Salary: ₱{breakdown['net_salary']:.2f}")
         
         confirm = safe_string_input("\nConfirm payout? (yes/no): ")
         if confirm and confirm.lower() == "yes":
@@ -2799,7 +2799,7 @@ class AdminPortal:
         for p in payroll_records:
             teacher = self.teacher_mgr.get_teacher(p.teacher_id)
             teacher_name = teacher.name if teacher else "Unknown"
-            print(f"{p.payroll_id:<15} {teacher_name:<20} {p.payout_period:<12} ${p.gross_salary:<11.2f} ${p.total_deductions:<11.2f} ${p.net_salary:<11.2f}")
+            print(f"{p.payroll_id:<15} {teacher_name:<20} {p.payout_period:<12} ₱{p.gross_salary:<11.2f} ₱{p.total_deductions:<11.2f} ₱{p.net_salary:<11.2f}")
         
         print("-" * 85)
         input("Press Enter to continue...")
@@ -2811,13 +2811,13 @@ class AdminPortal:
         
         summary = self.fee_mgr.get_financial_summary()
         
-        print(f"\nFees Collected: ${summary['total_fees_collected']:.2f}")
-        print(f"Outstanding Fees: ${summary['outstanding_fees']:.2f}")
+        print(f"\nFees Collected: ₱{summary['total_fees_collected']:.2f}")
+        print(f"Outstanding Fees: ₱{summary['outstanding_fees']:.2f}")
         print(f"Total Invoices: {summary['total_invoices']}")
         print(f"  - Paid: {summary['paid_invoices']}")
         print(f"  - Pending: {summary['pending_invoices']}")
         print(f"Total Payments: {summary['total_payments']}")
-        print(f"Total Payroll Expenses: ${summary['total_payroll_expenses']:.2f}")
+        print(f"Total Payroll Expenses: ₱{summary['total_payroll_expenses']:.2f}")
         
         input("\nPress Enter to continue...")
     
