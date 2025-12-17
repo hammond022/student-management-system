@@ -5,7 +5,8 @@ from utils import (
     clear_screen, print_header, print_section, safe_string_input, safe_int_input,
     validate_password, generate_id, load_from_pickle, save_to_pickle
 )
-from student_management import StudentManager
+from student_management import (StudentManager, DisciplineManager, 
+                                 AcademicArchiveManager, ExamScheduleManager)
 from teacher_management import TeacherManager
 from communication import CommunicationManager
 from fee_management import FeeManager
@@ -33,6 +34,9 @@ class UserPortal:
         self.teacher_mgr = TeacherManager()
         self.comm_mgr = CommunicationManager()
         self.fee_mgr = FeeManager()
+        self.discipline_mgr = DisciplineManager(self.student_mgr)
+        self.archive_mgr = AcademicArchiveManager(self.student_mgr)
+        self.exam_mgr = ExamScheduleManager()
         self.accounts = self._load_accounts()
         self.current_user = None
         self.current_role = None
@@ -379,7 +383,10 @@ class UserPortal:
         print("\n1. View My Information")
         print("2. View My Grades & GPA")
         print("3. View My Attendance")
-        print("4. Change Password")
+        print("4. View My Disciplinary Records")
+        print("5. View Exam Schedules")
+        print("6. View Academic History")
+        print("7. Change Password")
         print("0. Logout")
         print("\n" + "-" * 60)
     
@@ -527,6 +534,129 @@ class UserPortal:
         
         print("✓ Password changed successfully.")
         input("Press Enter to continue...")
+    
+    def student_view_discipline(self):
+        """View disciplinary records and commendations"""
+        clear_screen()
+        print_header("MY DISCIPLINARY RECORDS & COMMENDATIONS")
+        
+        records = self.discipline_mgr.get_student_records(self.current_id)
+        disciplines = self.discipline_mgr.get_student_disciplines(self.current_id)
+        commendations = self.discipline_mgr.get_student_commendations(self.current_id)
+        
+        print(f"\nDisciplinary Records: {len(disciplines)}")
+        print(f"Commendations: {len(commendations)}")
+        
+        if not records:
+            print("\n✓ No records found.")
+            input("Press Enter to continue...")
+            return
+        
+        print("\n" + "-" * 60)
+        
+        for record in sorted(records, key=lambda r: r.date, reverse=True):
+            if record.action_type == "discipline":
+                print(f"\n[DISCIPLINE - {record.severity.upper()}]")
+            else:
+                print(f"\n[COMMENDATION]")
+            
+            print(f"Date: {record.date}")
+            print(f"Description: {record.description}")
+            if record.status == "resolved":
+                print(f"Status: RESOLVED")
+                if record.resolution_notes:
+                    print(f"Resolution: {record.resolution_notes}")
+            print()
+        
+        input("Press Enter to continue...")
+    
+    def student_view_exam_schedules(self):
+        """View upcoming exam schedules"""
+        clear_screen()
+        print_header("MY EXAM SCHEDULES")
+        
+        student = self.student_mgr.get_student(self.current_id)
+        if not student:
+            print("✗ Student not found.")
+            input("Press Enter to continue...")
+            return
+        
+        # Get all exams for student's section
+        exams = self.exam_mgr.get_schedules_by_section(student.section)
+        
+        if not exams:
+            print(f"\nNo exam schedules found for section {student.section}.")
+            input("Press Enter to continue...")
+            return
+        
+        print(f"\nSection: {student.section}")
+        print(f"Total Exams: {len(exams)}\n")
+        
+        for exam in sorted(exams, key=lambda e: e.exam_date):
+            print(f"Subject: {exam.subject}")
+            print(f"  Type: {exam.exam_type.capitalize()}")
+            print(f"  Date: {exam.exam_date}")
+            print(f"  Time: {exam.start_time} - {exam.end_time}")
+            print(f"  Room: {exam.room}")
+            print()
+        
+        input("Press Enter to continue...")
+    
+    def student_view_academic_history(self):
+        """View academic history and snapshots"""
+        clear_screen()
+        print_header("MY ACADEMIC HISTORY")
+        
+        history = self.archive_mgr.get_student_history(self.current_id)
+        
+        if not history:
+            print("\nNo academic history available yet.")
+            input("Press Enter to continue...")
+            return
+        
+        print(f"\nTotal Snapshots: {len(history)}\n")
+        
+        for i, snapshot in enumerate(sorted(history, key=lambda s: s.snapshot_date, reverse=True), 1):
+            print(f"{i}. {snapshot.semester.upper()} - {snapshot.snapshot_date}")
+            print(f"   GPA: {snapshot.gpa:.2f if snapshot.gpa else 'N/A'}")
+            print(f"   Subjects: {len(snapshot.subjects_data)}")
+            
+            # Show choice to view details
+            if i == 1:
+                view = safe_string_input("   View details? (yes/no): ")
+                if view.lower() == "yes":
+                    self._show_snapshot_details(snapshot)
+            print()
+        
+        input("Press Enter to continue...")
+    
+    def _show_snapshot_details(self, snapshot):
+        """Display detailed information about an academic snapshot"""
+        clear_screen()
+        print_header(f"ACADEMIC SNAPSHOT - {snapshot.semester.upper()}")
+        
+        print(f"\nDate: {snapshot.snapshot_date}")
+        print(f"Section: {snapshot.section}")
+        print(f"GPA: {snapshot.gpa:.2f if snapshot.gpa else 'N/A'}")
+        
+        print(f"\nSubjects ({len(snapshot.subjects_data)}):")
+        for subject, data in snapshot.subjects_data.items():
+            print(f"\n  {subject}")
+            exams = data.get("exams", {})
+            if exams:
+                exam_scores = [v for v in exams.values() if v is not None]
+                if exam_scores:
+                    print(f"    Exams: {exam_scores}")
+            
+            attendance = data.get("attendance", [])
+            if attendance:
+                print(f"    Attendance Records: {len(attendance)}")
+            
+            activities = data.get("activities", [])
+            if activities:
+                print(f"    Activities: {len(activities)}")
+        
+        input("\nPress Enter to continue...")
 
     def teacher_main_menu(self):
 
@@ -757,10 +887,13 @@ class UserPortal:
         print("\n1. View Child's Information")
         print("2. View Grades & Attendance")
         print("3. View Fee Balance")
-        print("4. View Notifications")
-        print("5. Request Meeting with Teacher")
-        print("6. Send Message to Teacher/Staff")
-        print("7. Change Password")
+        print("4. View Exam Schedules")
+        print("5. View Disciplinary Records")
+        print("6. View Academic History")
+        print("7. View Notifications")
+        print("8. Request Meeting with Teacher")
+        print("9. Send Message to Teacher/Staff")
+        print("10. Change Password")
         print("0. Logout")
         print("\n" + "-" * 60)
     
@@ -1040,6 +1173,172 @@ class UserPortal:
         print("Teacher will receive a notification about your inquiry.")
         input("Press Enter to continue...")
     
+    def parent_view_exam_schedules(self):
+        """View child's exam schedules"""
+        parent = self.comm_mgr.get_parent(self.current_id)
+        
+        if not parent or not parent.student_ids:
+            print("\nNo children linked to your account.")
+            input("Press Enter to continue...")
+            return
+        
+        if len(parent.student_ids) == 1:
+            student_id = parent.student_ids[0]
+        else:
+            print("\nYour Children:")
+            for i, sid in enumerate(parent.student_ids, 1):
+                student = self.student_mgr.get_student(sid)
+                if student:
+                    print(f"{i}. {student.name} ({sid})")
+            
+            choice = safe_int_input("\nSelect child: ", 1, len(parent.student_ids))
+            if choice is None:
+                return
+            
+            student_id = parent.student_ids[choice - 1]
+        
+        student = self.student_mgr.get_student(student_id)
+        if not student:
+            print("Student not found.")
+            input("Press Enter to continue...")
+            return
+        
+        clear_screen()
+        print_header(f"EXAM SCHEDULES - {student.name}")
+        
+        exams = self.exam_mgr.get_schedules_by_section(student.section)
+        
+        if not exams:
+            print(f"\nNo exam schedules found for section {student.section}.")
+            input("Press Enter to continue...")
+            return
+        
+        print(f"\nSection: {student.section}")
+        print(f"Total Exams: {len(exams)}\n")
+        
+        for exam in sorted(exams, key=lambda e: e.exam_date):
+            print(f"Subject: {exam.subject}")
+            print(f"  Type: {exam.exam_type.capitalize()}")
+            print(f"  Date: {exam.exam_date}")
+            print(f"  Time: {exam.start_time} - {exam.end_time}")
+            print(f"  Room: {exam.room}")
+            print()
+        
+        input("Press Enter to continue...")
+    
+    def parent_view_disciplinary_records(self):
+        """View child's disciplinary records and commendations"""
+        parent = self.comm_mgr.get_parent(self.current_id)
+        
+        if not parent or not parent.student_ids:
+            print("\nNo children linked to your account.")
+            input("Press Enter to continue...")
+            return
+        
+        if len(parent.student_ids) == 1:
+            student_id = parent.student_ids[0]
+        else:
+            print("\nYour Children:")
+            for i, sid in enumerate(parent.student_ids, 1):
+                student = self.student_mgr.get_student(sid)
+                if student:
+                    print(f"{i}. {student.name} ({sid})")
+            
+            choice = safe_int_input("\nSelect child: ", 1, len(parent.student_ids))
+            if choice is None:
+                return
+            
+            student_id = parent.student_ids[choice - 1]
+        
+        student = self.student_mgr.get_student(student_id)
+        if not student:
+            print("Student not found.")
+            input("Press Enter to continue...")
+            return
+        
+        clear_screen()
+        print_header(f"DISCIPLINARY RECORDS & COMMENDATIONS - {student.name}")
+        
+        records = self.discipline_mgr.get_student_records(student_id)
+        disciplines = self.discipline_mgr.get_student_disciplines(student_id)
+        commendations = self.discipline_mgr.get_student_commendations(student_id)
+        
+        print(f"\nDisciplinary Records: {len(disciplines)}")
+        print(f"Commendations: {len(commendations)}")
+        
+        if not records:
+            print("\n✓ No records found.")
+            input("Press Enter to continue...")
+            return
+        
+        print("\n" + "-" * 60)
+        
+        for record in sorted(records, key=lambda r: r.date, reverse=True):
+            if record.action_type == "discipline":
+                print(f"\n[DISCIPLINE - {record.severity.upper()}]")
+            else:
+                print(f"\n[COMMENDATION]")
+            
+            print(f"Date: {record.date}")
+            print(f"Description: {record.description}")
+            if record.status == "resolved":
+                print(f"Status: RESOLVED")
+                if record.resolution_notes:
+                    print(f"Resolution: {record.resolution_notes}")
+            print()
+        
+        input("Press Enter to continue...")
+    
+    def parent_view_academic_history(self):
+        """View child's academic history"""
+        parent = self.comm_mgr.get_parent(self.current_id)
+        
+        if not parent or not parent.student_ids:
+            print("\nNo children linked to your account.")
+            input("Press Enter to continue...")
+            return
+        
+        if len(parent.student_ids) == 1:
+            student_id = parent.student_ids[0]
+        else:
+            print("\nYour Children:")
+            for i, sid in enumerate(parent.student_ids, 1):
+                student = self.student_mgr.get_student(sid)
+                if student:
+                    print(f"{i}. {student.name} ({sid})")
+            
+            choice = safe_int_input("\nSelect child: ", 1, len(parent.student_ids))
+            if choice is None:
+                return
+            
+            student_id = parent.student_ids[choice - 1]
+        
+        student = self.student_mgr.get_student(student_id)
+        if not student:
+            print("Student not found.")
+            input("Press Enter to continue...")
+            return
+        
+        clear_screen()
+        print_header(f"ACADEMIC HISTORY - {student.name}")
+        
+        history = self.archive_mgr.get_student_history(student_id)
+        
+        if not history:
+            print("\nNo academic history available yet.")
+            input("Press Enter to continue...")
+            return
+        
+        print(f"\nTotal Snapshots: {len(history)}\n")
+        
+        for i, snapshot in enumerate(sorted(history, key=lambda s: s.snapshot_date, reverse=True), 1):
+            print(f"{i}. {snapshot.semester.upper()} - {snapshot.snapshot_date}")
+            print(f"   GPA: {snapshot.gpa:.2f if snapshot.gpa else 'N/A'}")
+            print(f"   Subjects: {len(snapshot.subjects_data)}")
+            print()
+        
+        input("Press Enter to continue...")
+    
     def parent_change_password(self):
 
         print_section("CHANGE PASSWORD")
@@ -1125,6 +1424,12 @@ class UserPortal:
             elif choice == "3":
                 self.student_view_attendance()
             elif choice == "4":
+                self.student_view_discipline()
+            elif choice == "5":
+                self.student_view_exam_schedules()
+            elif choice == "6":
+                self.student_view_academic_history()
+            elif choice == "7":
                 self.student_change_password()
             else:
                 print("Invalid option.")
@@ -1171,12 +1476,18 @@ class UserPortal:
             elif choice == "3":
                 self.parent_view_fee_balance()
             elif choice == "4":
-                self.parent_view_notifications()
+                self.parent_view_exam_schedules()
             elif choice == "5":
-                self.parent_request_meeting()
+                self.parent_view_disciplinary_records()
             elif choice == "6":
-                self.parent_send_message()
+                self.parent_view_academic_history()
             elif choice == "7":
+                self.parent_view_notifications()
+            elif choice == "8":
+                self.parent_request_meeting()
+            elif choice == "9":
+                self.parent_send_message()
+            elif choice == "10":
                 self.parent_change_password()
             else:
                 print("Invalid option.")
