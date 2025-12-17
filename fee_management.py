@@ -33,7 +33,7 @@ class FeeStructure:
             return False, "Subject fee must be greater than 0"
         
         self.subject_fees[subject] = SubjectFee(subject, amount)
-        return True, f"Subject '{subject}' fee set to ₱{amount:.2f}"
+        return True, f"Subject '{subject}' fee set to PHP{amount:.2f}"
     
     def add_particular(self, particular_name: str) -> Tuple[bool, str]:
       
@@ -180,7 +180,7 @@ class FeeManager:
         particular = Particular(name, amount, description)
         self.particulars[name] = particular
         self.save_data()
-        return True, f"Particular '{name}' created: ₱{amount:.2f}"
+        return True, f"Particular '{name}' created: PHP{amount:.2f}"
     
     def get_particular(self, name: str) -> Optional[Particular]:
         return self.particulars.get(name)
@@ -421,7 +421,7 @@ class FeeManager:
             return False, "Payment amount must be greater than 0"
         
         if amount > invoice.amount:
-            return False, f"Payment amount exceeds invoice amount (₱{invoice.amount:.2f})"
+            return False, f"Payment amount exceeds invoice amount (PHP{invoice.amount:.2f})"
         
         self.payment_counter += 1
         payment_id = f"PAY{str(self.payment_counter).zfill(6)}"
@@ -455,7 +455,7 @@ class FeeManager:
         
         self.workload_rates[subject] = WorkloadRate(subject, rate_per_day)
         self.save_data()
-        return True, f"Workload rate for {subject} set to ₱{rate_per_day:.2f}/day"
+        return True, f"Workload rate for {subject} set to PHP{rate_per_day:.2f}/day"
     
     def get_workload_rate(self, subject: str) -> Optional[WorkloadRate]:
         return self.workload_rates.get(subject)
@@ -469,7 +469,7 @@ class FeeManager:
         
         self.earnings_config.base_salary = amount
         self.save_data()
-        return True, f"Base salary set to ₱{amount:.2f}"
+        return True, f"Base salary set to PHP{amount:.2f}"
     
     def set_overtime_rate(self, multiplier: float) -> Tuple[bool, str]:
         if multiplier <= 0:
@@ -522,7 +522,7 @@ class FeeManager:
         
         self.deduction_config.absence_deduction = amount_per_day
         self.save_data()
-        return True, f"Absence deduction set to ₱{amount_per_day:.2f}/day"
+        return True, f"Absence deduction set to PHP{amount_per_day:.2f}/day"
     
     def create_teacher_payroll(self, teacher_id: str, payout_period: str) -> Tuple[bool, str]:
         if not teacher_id or not payout_period:
@@ -601,7 +601,7 @@ class FeeManager:
         payroll.net_salary = payroll.gross_salary - payroll.total_deductions
         
         self.save_data()
-        return True, f"Payroll calculated: ₱{payroll.net_salary:.2f}"
+        return True, f"Payroll calculated: PHP{payroll.net_salary:.2f}"
     
     def finalize_payroll(self, payroll_id: str) -> Tuple[bool, str]:
 

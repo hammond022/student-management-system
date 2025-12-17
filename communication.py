@@ -273,7 +273,7 @@ class CommunicationManager:
                                 amount: float, due_date: str) -> Tuple[bool, str]:
       
         subject_line = f"Fee Due: {student_name}"
-        message = f"An invoice of ₱{amount:.2f} is due by {due_date} for {student_name}"
+        message = f"An invoice of PHP{amount:.2f} is due by {due_date} for {student_name}"
         return self.send_notification(parent_id, subject_line, message, "fee")
     
     def notify_parent_about_event(self, parent_ids: List[str], event_name: str,
