@@ -1373,13 +1373,12 @@ class AdminPortal:
             print_header("FEE & FINANCE MANAGEMENT")
             print("\n1. Manage Fee Structures")
             print("2. Manage Particulars")
-            print("3. Generate Enrollment Invoice for Section")
-            print("4. Generate Enrollment Invoice for Student")
-            print("5. Create Custom Invoice")
-            print("6. Record Payment")
-            print("7. View Invoices")
-            print("8. Manage Payroll")
-            print("9. Financial Reports")
+            print("3. Generate Enrollment Invoice")
+            print("4. Create Custom Invoice")
+            print("5. Record Payment")
+            print("6. View Invoices")
+            print("7. Manage Payroll")
+            print("8. Financial Reports")
             print("0. Back to Main Menu")
             print("-" * 60)
             
@@ -1392,18 +1391,16 @@ class AdminPortal:
             elif choice == "2":
                 self.manage_particulars()
             elif choice == "3":
-                self.generate_enrollment_invoice_for_section()
-            elif choice == "4":
                 self.generate_enrollment_invoice_for_student()
+            elif choice == "4":
+                self.create_custom_invoice_single_student()
             elif choice == "5":
-                self.create_custom_invoice()
-            elif choice == "6":
                 self.record_payment()
-            elif choice == "7":
+            elif choice == "6":
                 self.view_invoices()
-            elif choice == "8":
+            elif choice == "7":
                 self.manage_payroll()
-            elif choice == "9":
+            elif choice == "8":
                 self.financial_reports()
             else:
                 print("Invalid option. Please try again.")
@@ -1697,101 +1694,7 @@ class AdminPortal:
                 print(f"\n{'✓' if success else '✗'} {msg}")
                 input("Press Enter to continue...")
     
-    def generate_enrollment_invoice_for_section(self):
-
-        course_code = safe_string_input("Course code (e.g., BSIT): ")
-        if not course_code:
-            return
-        
-        year = safe_int_input("Year (1-4): ", 1, 4)
-        if year is None:
-            return
-        
-        section_num = safe_int_input("Section number (e.g., 1, 2, 3): ", 1)
-        if section_num is None:
-            return
-        
-        section = self.course_mgr.get_section(course_code, year, section_num)
-        if section is None:
-            print(f"Section {course_code}-{year}-{section_num} not found.")
-            input("Press Enter to continue...")
-            return
-        
-        section_key = f"{course_code}-{year}-{section_num}"
-        
-        students_in_section = self.student_mgr.get_students_by_section(section_key)
-        
-        if not students_in_section:
-            print(f"No students enrolled in {section_key}.")
-            input("Press Enter to continue...")
-            return
-        
-        fee_structure = self.fee_mgr.get_fee_structure(course_code, year)
-        if fee_structure is None:
-            print(f"No fee structure defined for {course_code}-{year}.")
-            print("Please create and configure the fee structure first.")
-            input("Press Enter to continue...")
-            return
-        
-        total_fee = self.fee_mgr.calculate_total_fee(course_code, year)
-        if total_fee <= 0:
-            print(f"Fee structure for {course_code}-{year} is incomplete.")
-            print("Please add subjects and/or particulars to the fee structure.")
-            input("Press Enter to continue...")
-            return
-        
-        clear_screen()
-        print_header(f"GENERATE INVOICES - {section_key}")
-        print(f"\nNumber of students: {len(students_in_section)}")
-        print(f"Fee per student: ₱{total_fee:.2f}")
-        print(f"Total invoices to generate: {len(students_in_section)}")
-        print(f"Total amount: ₱{total_fee * len(students_in_section):.2f}")
-        
-        breakdown = self.fee_mgr.get_fee_breakdown(course_code, year)
-        print("\nFee Breakdown:")
-        for item, amount in breakdown.items():
-            print(f"  {item}: ₱{amount:.2f}")
-        
-        due_date = safe_string_input("\nDue date (YYYY-MM-DD): ")
-        if not due_date:
-            return
-        
-        # Optional discount per student
-        discount_input = safe_string_input("\nDiscount per student in ₱ (leave blank for none): ", allow_empty=True)
-        discount_value = 0.0
-        if discount_input:
-            try:
-                discount_value = float(discount_input)
-                if discount_value < 0:
-                    print("Discount cannot be negative.")
-                    input("Press Enter to continue...")
-                    return
-            except ValueError:
-                print("Invalid discount value.")
-                input("Press Enter to continue...")
-                return
-        discount_desc = ""
-        if discount_value and discount_value > 0:
-            discount_desc = safe_string_input("Discount description (optional): ", allow_empty=True) or ""
-
-        confirm = safe_string_input(f"\nGenerate {len(students_in_section)} invoices for {section_key}? (yes/no): ")
-        if not (confirm and confirm.lower() == "yes"):
-            print("Cancelled.")
-            input("Press Enter to continue...")
-            return
-
-        success, invoice_ids = self.fee_mgr.generate_invoices_for_section(
-            course_code, year, students_in_section, due_date,
-            discount_per_student=discount_value, discount_description=discount_desc
-        )
-        
-        if success:
-            print(f"\n✓ Successfully generated {len(invoice_ids)} invoices!")
-            print(f"Invoice IDs: {invoice_ids[0]} to {invoice_ids[-1]}")
-        else:
-            print(f"\n✗ Error: {invoice_ids[0] if invoice_ids else 'Unknown error'}")
-        
-        input("Press Enter to continue...")
+    # 'Generate Enrollment Invoice for Section' removed — handler deleted
 
     def generate_enrollment_invoice_for_student(self):
 
@@ -1891,7 +1794,7 @@ class AdminPortal:
             clear_screen()
             print_header("CREATE CUSTOM INVOICE")
             print("\n1. Create Invoice for Single Student")
-            print("2. Create Invoice for Entire Section")
+            print("2. (removed) Create Invoice for Entire Section")
             print("0. Back")
             print("-" * 60)
             
@@ -1901,8 +1804,6 @@ class AdminPortal:
                 break
             elif choice == "1":
                 self.create_custom_invoice_single_student()
-            elif choice == "2":
-                self.create_custom_invoice_section()
             else:
                 print("Invalid option.")
                 input("Press Enter to continue...")
@@ -1956,77 +1857,7 @@ class AdminPortal:
         print(f"Invoice ID: {invoice_id}")
         input("Press Enter to continue...")
     
-    def create_custom_invoice_section(self):
-
-        course_code = safe_string_input("Course code (e.g., BSIT): ")
-        if not course_code:
-            return
-        
-        year = safe_int_input("Year (1-4): ", 1, 4)
-        if year is None:
-            return
-        
-        section_num = safe_int_input("Section number (e.g., 1, 2, 3): ", 1)
-        if section_num is None:
-            return
-        
-        section = self.course_mgr.get_section(course_code, year, section_num)
-        if section is None:
-            print(f"Section {course_code}-{year}-{section_num} not found.")
-            input("Press Enter to continue...")
-            return
-        
-        section_key = f"{course_code}-{year}-{section_num}"
-        students_in_section = self.student_mgr.get_students_by_section(section_key)
-        
-        if not students_in_section:
-            print(f"No students enrolled in {section_key}.")
-            input("Press Enter to continue...")
-            return
-        
-        clear_screen()
-        print_header(f"CREATE CUSTOM INVOICE - {section_key}")
-        
-        amount = safe_int_input("Invoice amount per student (₱): ", 1)
-        if amount is None:
-            return
-        
-        description = safe_string_input("Invoice description (e.g., Lab Fee, Activity Fee, etc., optional): ", allow_empty=True)
-        due_date = safe_string_input("Due date (YYYY-MM-DD): ")
-        if not due_date:
-            return
-        
-        print(f"\nInvoice Summary:")
-        print(f"Section: {section_key}")
-        print(f"Number of students: {len(students_in_section)}")
-        print(f"Amount per student: ₱{float(amount):.2f}")
-        print(f"Total amount: ₱{float(amount) * len(students_in_section):.2f}")
-        if description:
-            print(f"Description: {description}")
-        print(f"Due Date: {due_date}")
-        
-        confirm = safe_string_input("\nCreate invoices for all students? (yes/no): ")
-        if not (confirm and confirm.lower() == "yes"):
-            print("Cancelled.")
-            input("Press Enter to continue...")
-            return
-        
-        from fee_management import Invoice
-        invoice_ids = []
-        
-        for student in students_in_section:
-            invoice_id = f"INV-{student.student_id}-{len(self.fee_mgr.invoices) + 1}"
-            invoice = Invoice(invoice_id, student.student_id, "CUSTOM", 0, float(amount), due_date)
-            invoice.breakdown = {description if description else "Custom Fee": float(amount)}
-            
-            self.fee_mgr.invoices[invoice_id] = invoice
-            invoice_ids.append(invoice_id)
-        
-        self.fee_mgr.save_data()
-        
-        print(f"\n✓ Successfully created {len(invoice_ids)} invoices!")
-        print(f"Invoice IDs: {invoice_ids[0]} to {invoice_ids[-1]}")
-        input("Press Enter to continue...")
+    # 'Create Invoice for Entire Section' option removed — handler deleted
     
     def _record_payment_for_invoice(self, invoice):
 
