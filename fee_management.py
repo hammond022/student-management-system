@@ -315,7 +315,9 @@ class FeeManager:
         return True, "Fee structure deleted"
     
     def generate_invoices_for_section(self, course_code: str, year: int, 
-                                      students: List, due_date: str) -> Tuple[bool, List[str]]:
+                                      students: List, due_date: str,
+                                      discount_per_student: float = 0.0,
+                                      discount_description: str = "") -> Tuple[bool, List[str]]:
         total_fee = self.calculate_total_fee(course_code, year)
         
         if total_fee <= 0:
@@ -327,16 +329,58 @@ class FeeManager:
         for student in students:
             self.invoice_counter += 1
             invoice_id = f"INV{str(self.invoice_counter).zfill(6)}"
-            
+
+            amount = total_fee
+            invoice_breakdown = dict(breakdown)
+            if discount_per_student and discount_per_student > 0:
+                # apply discount (fixed amount)
+                discount = float(discount_per_student)
+                amount = max(0.0, amount - discount)
+                if discount_description:
+                    key = f"Discount ({discount_description})"
+                else:
+                    key = "Discount"
+                invoice_breakdown[key] = -abs(discount)
+
             invoice = Invoice(invoice_id, student.student_id, course_code, year, 
-                            total_fee, due_date)
-            invoice.breakdown = breakdown
-            
+                            amount, due_date)
+            invoice.breakdown = invoice_breakdown
+
             self.invoices[invoice_id] = invoice
             invoice_ids.append(invoice_id)
         
         self.save_data()
         return True, invoice_ids
+
+    def generate_invoice_for_student(self, student_id: str, course_code: str, year: int,
+                                     due_date: str, discount: float = 0.0,
+                                     discount_description: str = "") -> Tuple[bool, str]:
+        total_fee = self.calculate_total_fee(course_code, year)
+        if total_fee <= 0:
+            return False, "No fee structure defined for this COURSE-YEAR"
+
+        breakdown = self.get_fee_breakdown(course_code, year)
+
+        self.invoice_counter += 1
+        invoice_id = f"INV{str(self.invoice_counter).zfill(6)}"
+
+        amount = total_fee
+        invoice_breakdown = dict(breakdown)
+        if discount and discount > 0:
+            discount_val = float(discount)
+            amount = max(0.0, amount - discount_val)
+            if discount_description:
+                key = f"Discount ({discount_description})"
+            else:
+                key = "Discount"
+            invoice_breakdown[key] = -abs(discount_val)
+
+        invoice = Invoice(invoice_id, student_id, course_code, year, amount, due_date)
+        invoice.breakdown = invoice_breakdown
+
+        self.invoices[invoice_id] = invoice
+        self.save_data()
+        return True, invoice_id
     
     def get_invoice(self, invoice_id: str) -> Optional[Invoice]:
         return self.invoices.get(invoice_id)
