@@ -423,7 +423,7 @@ class StudentManager:
         student = self.students[student_id]
         grades = {}
         for subject in self.get_student_subjects(student_id):
-            if subject in student.exempted_subjects:
+            if subject in getattr(student, 'dropped_subjects', {}):
                 continue
             grade = self.get_subject_grade(student_id, subject)
             if grade is not None:
