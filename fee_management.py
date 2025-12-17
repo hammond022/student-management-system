@@ -81,9 +81,9 @@ class Payment:
 
 class WorkloadRate:
 
-    def __init__(self, subject: str, rate_per_day: float):
+    def __init__(self, subject: str, hourly_rate: float):
         self.subject = subject
-        self.rate_per_day = rate_per_day
+        self.hourly_rate = hourly_rate
 
 class Bonus:
 
@@ -95,7 +95,6 @@ class Bonus:
 class EarningsConfig:
 
     def __init__(self):
-        self.base_salary = 0.0
         self.overtime_rate = 1.5 
         self.bonuses = {} 
 
@@ -103,8 +102,7 @@ class DeductionConfig:
     
     def __init__(self):
         self.tax_rate = 0.0 
-        self.sss_rate = 0.0  
-        self.absence_deduction = 0.0 
+        self.sss_rate = 0.0 
 
 class TeacherPayroll:
     
@@ -113,19 +111,17 @@ class TeacherPayroll:
         self.teacher_id = teacher_id
         self.payout_period = payout_period 
         
-        self.days_present = 0
+        self.hours_worked = 0
         self.workload_earnings = 0.0  
         self.selected_bonus_ids = []  
         self.bonus_amount = 0.0
         self.overtime_hours = 0.0
         self.overtime_earnings = 0.0
 
-        self.base_salary = 0.0
         self.gross_salary = 0.0  
         
         self.tax_deduction = 0.0
         self.sss_deduction = 0.0
-        self.absence_deduction = 0.0
         self.total_deductions = 0.0
         
         self.net_salary = 0.0
@@ -449,13 +445,13 @@ class FeeManager:
         payments = self.get_invoice_payments(invoice_id)
         return sum(p.amount for p in payments)
     
-    def set_workload_rate(self, subject: str, rate_per_day: float) -> Tuple[bool, str]:
-        if not subject or rate_per_day <= 0:
+    def set_workload_rate(self, subject: str, hourly_rate: float) -> Tuple[bool, str]:
+        if not subject or hourly_rate <= 0:
             return False, "Invalid subject or rate"
         
-        self.workload_rates[subject] = WorkloadRate(subject, rate_per_day)
+        self.workload_rates[subject] = WorkloadRate(subject, hourly_rate)
         self.save_data()
-        return True, f"Workload rate for {subject} set to PHP{rate_per_day:.2f}/day"
+        return True, f"Workload rate for {subject} set to PHP{hourly_rate:.2f}/hour"
     
     def get_workload_rate(self, subject: str) -> Optional[WorkloadRate]:
         return self.workload_rates.get(subject)
@@ -463,13 +459,6 @@ class FeeManager:
     def list_workload_rates(self) -> List[WorkloadRate]:
         return list(self.workload_rates.values())
     
-    def set_base_salary(self, amount: float) -> Tuple[bool, str]:
-        if amount < 0:
-            return False, "Base salary cannot be negative"
-        
-        self.earnings_config.base_salary = amount
-        self.save_data()
-        return True, f"Base salary set to PHP{amount:.2f}"
     
     def set_overtime_rate(self, multiplier: float) -> Tuple[bool, str]:
         if multiplier <= 0:
@@ -516,13 +505,6 @@ class FeeManager:
         self.save_data()
         return True, f"SSS rate set to {sss_rate}%"
     
-    def set_absence_deduction(self, amount_per_day: float) -> Tuple[bool, str]:
-        if amount_per_day < 0:
-            return False, "Absence deduction cannot be negative"
-        
-        self.deduction_config.absence_deduction = amount_per_day
-        self.save_data()
-        return True, f"Absence deduction set to PHP{amount_per_day:.2f}/day"
     
     def create_teacher_payroll(self, teacher_id: str, payout_period: str) -> Tuple[bool, str]:
         if not teacher_id or not payout_period:
@@ -536,7 +518,6 @@ class FeeManager:
         payroll_id = f"PAYROLL-{str(self.payroll_counter).zfill(6)}"
         
         payroll = TeacherPayroll(payroll_id, teacher_id, payout_period)
-        payroll.base_salary = self.earnings_config.base_salary
         self.teacher_payroll[payroll_id] = payroll
         
         self.save_data()
@@ -557,7 +538,7 @@ class FeeManager:
     def list_all_payroll(self) -> List[TeacherPayroll]:
         return list(self.teacher_payroll.values())
     
-    def calculate_payroll(self, payroll_id: str, days_present: int, 
+    def calculate_payroll(self, payroll_id: str, hours_worked: int, 
                          subjects: List[str], selected_bonus_ids: List[str] = None,
                          overtime_hours: float = 0.0) -> Tuple[bool, str]:
         if payroll_id not in self.teacher_payroll:
@@ -565,21 +546,20 @@ class FeeManager:
         
         payroll = self.teacher_payroll[payroll_id]
         
-        if days_present < 0:
-            return False, "Days present cannot be negative"
+        if hours_worked < 0:
+            return False, "Hours worked cannot be negative"
         
-        payroll.days_present = days_present
+        payroll.hours_worked = hours_worked
         payroll.workload_earnings = 0.0
         
         for subject in subjects:
             workload_rate = self.get_workload_rate(subject)
             if not workload_rate:
                 return False, f"No workload rate set for {subject}"
-            payroll.workload_earnings += days_present * workload_rate.rate_per_day
+            payroll.workload_earnings += hours_worked * workload_rate.hourly_rate
         
         if overtime_hours > 0:
-            hourly_base_rate = payroll.base_salary / (8 * 14)
-            payroll.overtime_earnings = overtime_hours * hourly_base_rate * self.earnings_config.overtime_rate
+            payroll.overtime_earnings = overtime_hours * workload_rate.hourly_rate * self.earnings_config.overtime_rate
         
         payroll.overtime_hours = overtime_hours
         
@@ -588,15 +568,13 @@ class FeeManager:
                                   for bid in selected_bonus_ids 
                                   if bid in self.earnings_config.bonuses)
         
-        payroll.gross_salary = (payroll.base_salary + payroll.workload_earnings + 
+        payroll.gross_salary = (payroll.workload_earnings + 
                                payroll.bonus_amount + payroll.overtime_earnings)
         
         payroll.tax_deduction = payroll.gross_salary * (self.deduction_config.tax_rate / 100)
         payroll.sss_deduction = payroll.gross_salary * (self.deduction_config.sss_rate / 100)
-        payroll.absence_deduction = (14 - days_present) * self.deduction_config.absence_deduction  # 14 days per fortnight
         
-        payroll.total_deductions = (payroll.tax_deduction + payroll.sss_deduction + 
-                                   payroll.absence_deduction)
+        payroll.total_deductions = (payroll.tax_deduction + payroll.sss_deduction)
         
         payroll.net_salary = payroll.gross_salary - payroll.total_deductions
         
@@ -624,14 +602,13 @@ class FeeManager:
             "payroll_id": payroll.payroll_id,
             "teacher_id": payroll.teacher_id,
             "payout_period": payroll.payout_period,
-            "base_salary": payroll.base_salary,
+            "hours_worked": payroll.hours_worked,
             "workload_earnings": payroll.workload_earnings,
             "bonus_amount": payroll.bonus_amount,
             "overtime_earnings": payroll.overtime_earnings,
             "gross_salary": payroll.gross_salary,
             "tax_deduction": payroll.tax_deduction,
             "sss_deduction": payroll.sss_deduction,
-            "absence_deduction": payroll.absence_deduction,
             "total_deductions": payroll.total_deductions,
             "net_salary": payroll.net_salary,
             "payment_status": payroll.payment_status,
