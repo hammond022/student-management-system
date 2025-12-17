@@ -7,7 +7,8 @@ from utils import (
     display_page, get_full_name, STUDENTS_FILE, TEACHERS_FILE, COURSES_FILE
 )
 from auth import setup_first_admin, admin_login_prompt, AuthManager
-from student_management import StudentManager
+from student_management import (StudentManager, ExamScheduleManager, DisciplineManager,
+                                 AcademicArchiveManager)
 from teacher_management import TeacherManager
 from fee_management import FeeManager
 from communication import CommunicationManager
@@ -155,6 +156,9 @@ class AdminPortal:
         self.comm_mgr = CommunicationManager()
         self.course_mgr = CourseManager()
         self.auth = AuthManager()
+        self.exam_mgr = ExamScheduleManager()
+        self.discipline_mgr = DisciplineManager(self.student_mgr)
+        self.archive_mgr = AcademicArchiveManager(self.student_mgr)
         self.admin_id = None
         self.admin_username = None
     
@@ -184,8 +188,9 @@ class AdminPortal:
         print("2. Teacher & Timetable Management")
         print("3. Fee & Finance Management")
         print("4. Course & Section Management")
-        print("5. Parent & Communication Portal")
-        print("6. System Settings")
+        print("5. Exam Schedules")
+        print("6. Parent & Communication Portal")
+        print("7. System Settings")
         print("0. Logout")
         print("\n" + "-" * 60)
     
@@ -324,8 +329,10 @@ class AdminPortal:
             print("3. Record Grades & Exams")
             print("4. View Grades & GPA")
             print("5. View Attendance")
-            print("6. Update Student Info")
-            print("7. Delete Student")
+            print("6. Manage Disciplinary Records")
+            print("7. View Academic History")
+            print("8. Create Academic Snapshot")
+            print("9. Update Student Info")
             print("0. Back to Student Menu")
             print("-" * 60)
             
@@ -344,9 +351,13 @@ class AdminPortal:
             elif choice == "5":
                 self.view_attendance(student_id)
             elif choice == "6":
-                self.update_student_info(student_id)
+                self.manage_student_discipline(student_id)
             elif choice == "7":
-                self.delete_student(student_id)
+                self.view_academic_history_for_student(student_id)
+            elif choice == "8":
+                self.create_academic_snapshot_for_student(student_id)
+            elif choice == "9":
+                self.update_student_info(student_id)
             else:
                 print("Invalid option. Please try again.")
                 input("Press Enter to continue...")
@@ -818,7 +829,7 @@ class AdminPortal:
         while True:
             clear_screen()
             print_header("TEACHER & TIMETABLE MANAGEMENT")
-            print("\n1. Create Teacher")
+            print("\n1. Add Teacher")
             print("2. View all Teachers")
             print("3. View Teacher Details")
             print("0. Back to Main Menu")
@@ -840,7 +851,7 @@ class AdminPortal:
     
     def create_teacher(self):
 
-        print_section("CREATE NEW TEACHER")
+        print_section("ADD NEW TEACHER")
         
         name = get_full_name()
         if not name:
@@ -3134,7 +3145,7 @@ class AdminPortal:
                 if student_ids:
                     break
                 else:
-                    confirm = safe_string_input("No students linked. Create parent anyway? (yes/no): ")
+                    confirm = safe_string_input("No students linked. Add parent anyway? (yes/no): ")
                     if confirm and confirm.lower() == "yes":
                         student_ids = ["PLACEHOLDER"]
                         break
@@ -3185,7 +3196,7 @@ class AdminPortal:
             clear_screen()
             print_header("MANAGE PARENT ACCOUNTS")
             print("\n1. View Parent Accounts")
-            print("2. Create New Parent")
+            print("2. Add New Parent")
             print("3. Update Parent Info")
             print("4. Link Student to Parent")
             print("5. Remove Student from Parent")
@@ -3341,6 +3352,525 @@ class AdminPortal:
         
         input("\nPress Enter to continue...")
     
+    def exam_and_discipline_menu(self):
+        """Menu for exam schedules"""
+        while True:
+            clear_screen()
+            print_header("EXAM SCHEDULES MANAGEMENT")
+            print("\n1. Manage Exam Schedules")
+            print("2. View All Exam Schedules")
+            print("0. Back to Main Menu")
+            print("-" * 60)
+            
+            choice = safe_string_input("Choose option: ")
+            
+            if choice == "0":
+                break
+            elif choice == "1":
+                self.manage_exam_schedules()
+            elif choice == "2":
+                self.view_all_exam_schedules()
+            else:
+                print("Invalid option. Please try again.")
+                input("Press Enter to continue...")
+    
+    def manage_exam_schedules(self):
+        """Create and manage exam schedules"""
+        while True:
+            clear_screen()
+            print_header("MANAGE EXAM SCHEDULES")
+            print("\n1. Create New Exam Schedule")
+            print("2. Update Exam Schedule")
+            print("3. Delete Exam Schedule")
+            print("0. Back")
+            print("-" * 60)
+            
+            choice = safe_string_input("Choose option: ")
+            
+            if choice == "0":
+                break
+            elif choice == "1":
+                self.create_exam_schedule()
+            elif choice == "2":
+                self.update_exam_schedule()
+            elif choice == "3":
+                self.delete_exam_schedule()
+            else:
+                print("Invalid option. Please try again.")
+                input("Press Enter to continue...")
+    
+    def create_exam_schedule(self):
+        """Create a new exam schedule"""
+        clear_screen()
+        print_header("CREATE EXAM SCHEDULE")
+        
+        # Step 1: Select Course
+        courses = self.course_mgr.list_courses()
+        if not courses:
+            print("✗ No courses available. Please create courses first.")
+            input("Press Enter to continue...")
+            return
+        
+        print("\nAvailable Courses:")
+        for i, (code, course_data) in enumerate(courses, 1):
+            print(f"{i}. {code} - {course_data.get('name', 'N/A')}")
+        print("0. Back")
+        
+        course_choice = safe_int_input("Select course: ", 0, len(courses))
+        if course_choice is None or course_choice == 0:
+            return
+        
+        course_code, course_data = courses[course_choice - 1]
+        
+        # Step 2: Select Year
+        sections_by_year = course_data.get("sections", {})
+        if not sections_by_year:
+            print(f"✗ No years/sections available for {course_code}")
+            input("Press Enter to continue...")
+            return
+        
+        years = sorted(sections_by_year.keys(), key=lambda x: int(x) if x.isdigit() else 999)
+        
+        print(f"\nAvailable Years for {course_code}:")
+        for i, year in enumerate(years, 1):
+            section_count = len(sections_by_year[year])
+            print(f"{i}. Year {year} ({section_count} section(s))")
+        print("0. Back")
+        
+        year_choice = safe_int_input("Select year: ", 0, len(years))
+        if year_choice is None or year_choice == 0:
+            return
+        
+        year = years[year_choice - 1]
+        
+        # Step 3: Select Section
+        sections_dict = sections_by_year[year]
+        section_nums = sorted(sections_dict.keys(), key=lambda x: int(x) if x.isdigit() else 999)
+        
+        print(f"\nAvailable Sections for {course_code} Year {year}:")
+        for i, section_num in enumerate(section_nums, 1):
+            section_obj = sections_dict[section_num]
+            subject_count = len(section_obj.get("subjects", []))
+            print(f"{i}. Section {section_num} ({subject_count} subject(s))")
+        print("0. Back")
+        
+        section_choice = safe_int_input("Select section: ", 0, len(section_nums))
+        if section_choice is None or section_choice == 0:
+            return
+        
+        section_num = section_nums[section_choice - 1]
+        section_obj = sections_dict[section_num]
+        section_name = f"{course_code}-{year}-{section_num}"
+        
+        # Step 4: Select Subject
+        subjects = section_obj.get("subjects", [])
+        if not subjects:
+            print(f"✗ No subjects available for section {section_name}")
+            input("Press Enter to continue...")
+            return
+        
+        print(f"\nAvailable Subjects for {section_name}:")
+        for i, subj in enumerate(subjects, 1):
+            print(f"{i}. {subj}")
+        print("0. Back")
+        
+        subj_choice = safe_int_input("Select subject: ", 0, len(subjects))
+        if subj_choice is None or subj_choice == 0:
+            return
+        
+        subject = subjects[subj_choice - 1]
+        
+        # Step 5: Select Exam Type
+        print("\nExam Type:")
+        print("1. Prelim")
+        print("2. Midterm")
+        print("3. Finals")
+        
+        exam_choice = safe_int_input("Select exam type: ", 1, 3)
+        if exam_choice is None:
+            return
+        
+        exam_map = {1: "prelim", 2: "midterm", 3: "finals"}
+        exam_type = exam_map[exam_choice]
+        
+        # Step 6: Enter Exam Details
+        exam_date = safe_string_input("Exam date (YYYY-MM-DD): ")
+        if not exam_date:
+            return
+        
+        start_time = safe_string_input("Start time (HH:MM): ")
+        if not start_time:
+            return
+        
+        end_time = safe_string_input("End time (HH:MM): ")
+        if not end_time:
+            return
+        
+        room = safe_string_input("Room/Location: ")
+        if not room:
+            return
+        
+        # Check for conflicts
+        has_conflict, conflict_msg = self.exam_mgr.check_exam_conflict(section_name, exam_date, start_time, end_time)
+        if has_conflict:
+            print(f"\n✗ {conflict_msg}")
+            input("Press Enter to continue...")
+            return
+        
+        success, msg = self.exam_mgr.create_exam_schedule(section_name, subject, exam_type, exam_date, start_time, end_time, room)
+        print(f"\n{'✓' if success else '✗'} {msg}")
+        input("Press Enter to continue...")
+    
+    def update_exam_schedule(self):
+        """Update an existing exam schedule"""
+        clear_screen()
+        print_header("UPDATE EXAM SCHEDULE")
+        
+        exam_id = safe_string_input("Exam ID: ")
+        if not exam_id:
+            return
+        
+        exam = self.exam_mgr.get_exam_schedule(exam_id)
+        if not exam:
+            print("✗ Exam schedule not found")
+            input("Press Enter to continue...")
+            return
+        
+        print(f"\nCurrent Details:")
+        print(f"  Section: {exam.section}")
+        print(f"  Subject: {exam.subject}")
+        print(f"  Type: {exam.exam_type}")
+        print(f"  Date: {exam.exam_date}")
+        print(f"  Time: {exam.start_time} - {exam.end_time}")
+        print(f"  Room: {exam.room}")
+        
+        exam_date = safe_string_input("\nNew exam date (YYYY-MM-DD, or press Enter to keep): ")
+        start_time = safe_string_input("New start time (HH:MM, or press Enter to keep): ")
+        end_time = safe_string_input("New end time (HH:MM, or press Enter to keep): ")
+        room = safe_string_input("New room (or press Enter to keep): ")
+        
+        success, msg = self.exam_mgr.update_exam_schedule(exam_id, exam_date, start_time, end_time, room)
+        print(f"\n{'✓' if success else '✗'} {msg}")
+        input("Press Enter to continue...")
+    
+    def delete_exam_schedule(self):
+        """Delete an exam schedule"""
+        clear_screen()
+        print_header("DELETE EXAM SCHEDULE")
+        
+        exam_id = safe_string_input("Exam ID: ")
+        if not exam_id:
+            return
+        
+        confirm = safe_string_input("Are you sure? (yes/no): ")
+        if confirm.lower() != "yes":
+            print("Cancelled.")
+            input("Press Enter to continue...")
+            return
+        
+        success, msg = self.exam_mgr.delete_exam_schedule(exam_id)
+        print(f"\n{'✓' if success else '✗'} {msg}")
+        input("Press Enter to continue...")
+    
+    def view_all_exam_schedules(self):
+        """Display all exam schedules"""
+        clear_screen()
+        print_header("ALL EXAM SCHEDULES")
+        
+        exams = self.exam_mgr.list_all_exams()
+        
+        if not exams:
+            print("\nNo exam schedules found.")
+            input("Press Enter to continue...")
+            return
+        
+        print(f"\nTotal Exam Schedules: {len(exams)}\n")
+        
+        for exam in sorted(exams, key=lambda e: e.exam_date):
+            print(f"ID: {exam.exam_id}")
+            print(f"  Section: {exam.section}")
+            print(f"  Subject: {exam.subject} ({exam.exam_type.capitalize()})")
+            print(f"  Date: {exam.exam_date}")
+            print(f"  Time: {exam.start_time} - {exam.end_time}")
+            print(f"  Room: {exam.room}")
+            print()
+        
+        input("Press Enter to continue...")
+    
+    def manage_student_discipline(self, student_id: str = None):
+        """Manage disciplinary records for a student"""
+        if student_id is None:
+            clear_screen()
+            print_header("MANAGE STUDENT DISCIPLINE")
+            
+            student_id = safe_string_input("Enter Student ID: ")
+            if not student_id:
+                return
+        
+        student = self.student_mgr.get_student(student_id)
+        if not student:
+            print("✗ Student not found")
+            input("Press Enter to continue...")
+            return
+        
+        while True:
+            clear_screen()
+            print_header(f"DISCIPLINE RECORDS - {student.name}")
+            
+            disciplines = self.discipline_mgr.get_student_disciplines(student_id)
+            commendations = self.discipline_mgr.get_student_commendations(student_id)
+            
+            print(f"\nDisciplinary Records: {len(disciplines)}")
+            print(f"Commendations: {len(commendations)}")
+            
+            print("\n1. View All Records")
+            print("2. Add Discipline")
+            print("3. Add Commendation")
+            print("4. Resolve Discipline")
+            print("0. Back")
+            print("-" * 60)
+            
+            choice = safe_string_input("Choose option: ")
+            
+            if choice == "0":
+                break
+            elif choice == "1":
+                self.view_student_records(student_id)
+            elif choice == "2":
+                self.add_discipline_for_student(student_id)
+            elif choice == "3":
+                self.add_commendation_for_student(student_id)
+            elif choice == "4":
+                self.resolve_student_discipline(student_id)
+            else:
+                print("Invalid option. Please try again.")
+                input("Press Enter to continue...")
+    
+    def add_discipline_record(self):
+        """Add a discipline record from main menu"""
+        clear_screen()
+        print_header("ADD DISCIPLINE RECORD")
+        
+        student_id = safe_string_input("Student ID: ")
+        if not student_id:
+            return
+        
+        self.add_discipline_for_student(student_id)
+    
+    def add_discipline_for_student(self, student_id: str):
+        """Add discipline for specific student"""
+        clear_screen()
+        print_header(f"ADD DISCIPLINE - {self.student_mgr.get_student(student_id).name if self.student_mgr.get_student(student_id) else 'Unknown'}")
+        
+        description = safe_string_input("Description of incident: ")
+        if not description:
+            return
+        
+        print("\nSeverity Level:")
+        print("1. Minor")
+        print("2. Major")
+        print("3. Severe")
+        
+        severity_choice = safe_int_input("Select severity: ", 1, 3)
+        if severity_choice is None:
+            return
+        
+        severity_map = {1: "minor", 2: "major", 3: "severe"}
+        severity = severity_map[severity_choice]
+        
+        success, msg = self.discipline_mgr.add_discipline(student_id, description, severity, self.admin_id)
+        print(f"\n{'✓' if success else '✗'} {msg}")
+        input("Press Enter to continue...")
+    
+    def add_commendation_record(self):
+        """Add a commendation record from main menu"""
+        clear_screen()
+        print_header("ADD COMMENDATION")
+        
+        student_id = safe_string_input("Student ID: ")
+        if not student_id:
+            return
+        
+        self.add_commendation_for_student(student_id)
+    
+    def add_commendation_for_student(self, student_id: str):
+        """Add commendation for specific student"""
+        student = self.student_mgr.get_student(student_id)
+        if not student:
+            print("✗ Student not found")
+            input("Press Enter to continue...")
+            return
+        
+        clear_screen()
+        print_header(f"ADD COMMENDATION - {student.name}")
+        
+        description = safe_string_input("Description of commendation: ")
+        if not description:
+            return
+        
+        success, msg = self.discipline_mgr.add_commendation(student_id, description, self.admin_id)
+        print(f"\n{'✓' if success else '✗'} {msg}")
+        input("Press Enter to continue...")
+    
+    def view_student_records(self, student_id: str):
+        """View all discipline and commendation records for a student"""
+        clear_screen()
+        student = self.student_mgr.get_student(student_id)
+        print_header(f"ALL RECORDS - {student.name}")
+        
+        records = self.discipline_mgr.get_student_records(student_id)
+        
+        if not records:
+            print("\nNo records found.")
+            input("Press Enter to continue...")
+            return
+        
+        print(f"\nTotal Records: {len(records)}\n")
+        
+        for record in sorted(records, key=lambda r: r.date, reverse=True):
+            record_type = "COMMENDATION" if record.action_type == "commendation" else "DISCIPLINE"
+            severity_str = f" [{record.severity.upper()}]" if record.severity else ""
+            status_str = f" - {record.status.upper()}" if record.status == "resolved" else ""
+            
+            print(f"ID: {record.record_id}")
+            print(f"  Type: {record_type}{severity_str}{status_str}")
+            print(f"  Date: {record.date}")
+            print(f"  Description: {record.description}")
+            if record.resolution_notes:
+                print(f"  Resolution: {record.resolution_notes}")
+            print()
+        
+        input("Press Enter to continue...")
+    
+    def view_unresolved_disciplines(self):
+        """View all unresolved disciplinary records"""
+        clear_screen()
+        print_header("UNRESOLVED DISCIPLINARY RECORDS")
+        
+        disciplines = self.discipline_mgr.get_unresolved_disciplines()
+        
+        if not disciplines:
+            print("\nNo unresolved disciplinary records.")
+            input("Press Enter to continue...")
+            return
+        
+        print(f"\nTotal Unresolved: {len(disciplines)}\n")
+        
+        for record in sorted(disciplines, key=lambda r: r.date):
+            student = self.student_mgr.get_student(record.student_id)
+            student_name = student.name if student else "Unknown"
+            
+            print(f"ID: {record.record_id}")
+            print(f"  Student: {student_name} ({record.student_id})")
+            print(f"  Severity: {record.severity.upper()}")
+            print(f"  Date: {record.date}")
+            print(f"  Description: {record.description}")
+            print()
+        
+        input("Press Enter to continue...")
+    
+    def resolve_student_discipline(self, student_id: str):
+        """Mark a discipline record as resolved"""
+        clear_screen()
+        print_header("RESOLVE DISCIPLINE RECORD")
+        
+        record_id = safe_string_input("Record ID: ")
+        if not record_id:
+            return
+        
+        record = self.discipline_mgr.get_record(record_id)
+        if not record or record.student_id != student_id:
+            print("✗ Record not found for this student")
+            input("Press Enter to continue...")
+            return
+        
+        resolution_notes = safe_string_input("Resolution notes: ")
+        if not resolution_notes:
+            return
+        
+        success, msg = self.discipline_mgr.resolve_discipline(record_id, resolution_notes)
+        print(f"\n{'✓' if success else '✗'} {msg}")
+        input("Press Enter to continue...")
+    
+    def view_academic_history(self, student_id: str = None):
+        """View academic history for a student"""
+        if student_id is None:
+            clear_screen()
+            print_header("ACADEMIC HISTORY")
+            
+            student_id = safe_string_input("Enter Student ID: ")
+            if not student_id:
+                return
+        
+        student = self.student_mgr.get_student(student_id)
+        if not student:
+            print("✗ Student not found")
+            input("Press Enter to continue...")
+            return
+        
+        clear_screen()
+        print_header(f"ACADEMIC HISTORY - {student.name}")
+        
+        history = self.archive_mgr.get_student_history(student_id)
+        
+        if not history:
+            print("\nNo academic history available.")
+            input("Press Enter to continue...")
+            return
+        
+        print(f"\nTotal Snapshots: {len(history)}\n")
+        
+        for i, snapshot in enumerate(sorted(history, key=lambda s: s.snapshot_date, reverse=True), 1):
+            print(f"{i}. {snapshot.semester.upper()} - {snapshot.snapshot_date}")
+            print(f"   Section: {snapshot.section}")
+            gpa_str = f"{snapshot.gpa:.2f}" if snapshot.gpa is not None else "N/A"
+            print(f"   GPA: {gpa_str}")
+            print(f"   Subjects: {len(snapshot.subjects_data)}")
+            print()
+        
+        input("Press Enter to continue...")
+    
+    def view_academic_history_for_student(self, student_id: str):
+        """Wrapper to view academic history for selected student"""
+        return self.view_academic_history(student_id)
+    
+    def create_academic_snapshot(self, student_id: str = None):
+        """Create an academic snapshot for a student"""
+        if student_id is None:
+            clear_screen()
+            print_header("CREATE ACADEMIC SNAPSHOT")
+            
+            student_id = safe_string_input("Student ID: ")
+            if not student_id:
+                return
+        
+        student = self.student_mgr.get_student(student_id)
+        if not student:
+            print("✗ Student not found")
+            input("Press Enter to continue...")
+            return
+        
+        print(f"\nStudent: {student.name}")
+        print("\nSemester Type:")
+        print("1. Semester 1 (SEM A)")
+        print("2. Semester 2 (SEM B)")
+     
+        
+        semester_choice = safe_int_input("Select semester: ", 1, 3)
+        if semester_choice is None:
+            return
+        
+        semester_map = {1: "sem1", 2: "sem2", 3: "year-end"}
+        semester = semester_map[semester_choice]
+        
+        success, msg = self.archive_mgr.create_snapshot(student_id, semester)
+        print(f"\n{'✓' if success else '✗'} {msg}")
+        input("Press Enter to continue...")
+    
+    def create_academic_snapshot_for_student(self, student_id: str):
+        """Wrapper to create snapshot for selected student"""
+        return self.create_academic_snapshot(student_id)
+    
     def settings_menu(self):
 
         while True:
@@ -3417,8 +3947,10 @@ class AdminPortal:
             elif choice == "4":
                 self.course_menu()
             elif choice == "5":
-                self.communication_menu()
+                self.exam_and_discipline_menu()
             elif choice == "6":
+                self.communication_menu()
+            elif choice == "7":
                 self.settings_menu()
             else:
                 print("Invalid option. Please try again.")
