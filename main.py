@@ -2189,7 +2189,7 @@ class AdminPortal:
                     for subject in sorted(subjects_set):
                         workload_rate = self.fee_mgr.get_workload_rate(subject)
                         if workload_rate:
-                            subjects_info.append(f"{subject}(PHP{workload_rate.rate_per_day:.0f}/day)")
+                            subjects_info.append(f"{subject}(PHP{workload_rate.hourly_rate:.0f}/hr)")
                         else:
                             subjects_info.append(f"{subject}(no rate)")
                     print(f"     Subjects: {', '.join(subjects_info)}")
@@ -2258,7 +2258,7 @@ class AdminPortal:
                 for subject in subjects:
                     workload_rate = self.fee_mgr.get_workload_rate(subject)
                     if workload_rate:
-                        print(f"  • {subject}: PHP{workload_rate.rate_per_day:.2f}/day")
+                        print(f"  • {subject}: PHP{workload_rate.hourly_rate:.2f}/hour")
                     else:
                         print(f"  • {subject}: (rate not configured)")
             else:
@@ -2320,8 +2320,8 @@ class AdminPortal:
             input("Press Enter to continue...")
             return
         
-        days_present = safe_int_input("Days present (0-14): ", 0, 14)
-        if days_present is None:
+        hours_worked = safe_int_input("Hours worked: ", 0)
+        if hours_worked is None:
             return
         
         overtime = safe_int_input("Overtime hours (0 if none): ", 0)
@@ -2347,7 +2347,7 @@ class AdminPortal:
                     print("Invalid bonus selection.")
         
         success, msg = self.fee_mgr.calculate_payroll(
-            payroll_id, days_present, subjects, selected_bonus_ids, float(overtime)
+            payroll_id, hours_worked, subjects, selected_bonus_ids, float(overtime)
         )
         
         if not success:
@@ -2363,8 +2363,7 @@ class AdminPortal:
             print(f"\nTeacher: {teacher.name}")
             print(f"Period: {breakdown['payout_period']}")
             print(f"\nEarnings:")
-            print(f"  Base Salary: PHP{breakdown['base_salary']:.2f}")
-            print(f"  Workload ({days_present} days): PHP{breakdown['workload_earnings']:.2f}")
+            print(f"  Workload ({hours_worked}h): PHP{breakdown['workload_earnings']:.2f}")
             if breakdown['overtime_earnings'] > 0:
                 print(f"  Overtime ({overtime}h): PHP{breakdown['overtime_earnings']:.2f}")
             if breakdown['bonus_amount'] > 0:
@@ -2376,8 +2375,6 @@ class AdminPortal:
                 print(f"  Tax: PHP{breakdown['tax_deduction']:.2f}")
             if breakdown['sss_deduction'] > 0:
                 print(f"  SSS: PHP{breakdown['sss_deduction']:.2f}")
-            if breakdown['absence_deduction'] > 0:
-                print(f"  Absence ({14 - days_present} days): PHP{breakdown['absence_deduction']:.2f}")
             print(f"  Total Deductions: PHP{breakdown['total_deductions']:.2f}")
             
             print(f"\nNet Salary: PHP{breakdown['net_salary']:.2f}")
@@ -2421,7 +2418,7 @@ class AdminPortal:
             for subject in sorted(subjects_set):
                 workload_rate = self.fee_mgr.get_workload_rate(subject)
                 if workload_rate:
-                    print(f"  • {subject}: PHP{workload_rate.rate_per_day:.2f}/day")
+                    print(f"  • {subject}: PHP{workload_rate.hourly_rate:.2f}/hour")
                 else:
                     print(f"  • {subject}: (rate not configured)")
         else:
@@ -2429,7 +2426,6 @@ class AdminPortal:
         
         print(f"\nEarnings Configuration:")
         earnings_config = self.fee_mgr.earnings_config
-        print(f"  Base Salary: PHP{earnings_config.base_salary:.2f}")
         print(f"  Overtime Multiplier: {earnings_config.overtime_rate}x")
         print(f"  Available Bonuses: {len(earnings_config.bonuses)}")
         if earnings_config.bonuses:
@@ -2440,7 +2436,6 @@ class AdminPortal:
         deduction_config = self.fee_mgr.deduction_config
         print(f"  Tax Rate: {deduction_config.tax_rate}%")
         print(f"  SSS Rate: {deduction_config.sss_rate}%")
-        print(f"  Absence Deduction: PHP{deduction_config.absence_deduction:.2f}/day")
         
         print(f"\nPayroll Records: {len(payroll_records)}")
         
@@ -2495,7 +2490,7 @@ class AdminPortal:
                 
                 subject = available_subjects[subject_choice - 1]
                 
-                rate = safe_int_input("Pay rate per day (PHP): ", 1)
+                rate = safe_int_input("Pay rate per hour (PHP): ", 1)
                 if rate is None:
                     continue
                 
@@ -2508,7 +2503,7 @@ class AdminPortal:
                 if rates:
                     print("\nSubject Pay Rates:")
                     for rate in rates:
-                        print(f"  {rate.subject}: PHP{rate.rate_per_day:.2f}/day")
+                        print(f"  {rate.subject}: PHP{rate.hourly_rate:.2f}/hour")
                 else:
                     print("\nNo pay rates configured yet.")
                 input("Press Enter to continue...")
@@ -2518,11 +2513,10 @@ class AdminPortal:
         while True:
             clear_screen()
             print_header("MANAGE EARNINGS")
-            print("\n1. Set Base Salary")
-            print("2. Set Overtime Rate")
-            print("3. Create Bonus")
-            print("4. View Bonuses")
-            print("5. Delete Bonus")
+            print("\n1. Set Overtime Rate")
+            print("2. Create Bonus")
+            print("3. View Bonuses")
+            print("4. Delete Bonus")
             print("0. Back")
             print("-" * 60)
             
@@ -2531,15 +2525,6 @@ class AdminPortal:
             if choice == "0":
                 break
             elif choice == "1":
-                amount = safe_int_input("\nBase salary (PHP): ", 0)
-                if amount is None:
-                    continue
-                
-                success, msg = self.fee_mgr.set_base_salary(float(amount))
-                print(f"\n{'✓' if success else '✗'} {msg}")
-                input("Press Enter to continue...")
-            
-            elif choice == "2":
                 rate = safe_float_input("\nOvertime rate multiplier (e.g., 1.5 for 1.5x): ", 0.1)
                 if rate is None:
                     continue
@@ -2548,7 +2533,7 @@ class AdminPortal:
                 print(f"\n{'✓' if success else '✗'} {msg}")
                 input("Press Enter to continue...")
             
-            elif choice == "3":
+            elif choice == "2":
                 name = safe_string_input("\nBonus name (e.g., Performance Bonus): ")
                 if not name:
                     continue
@@ -2564,7 +2549,7 @@ class AdminPortal:
                     print(f"\n✗ Error: {bonus_id}")
                 input("Press Enter to continue...")
             
-            elif choice == "4":
+            elif choice == "3":
                 bonuses = self.fee_mgr.list_bonuses()
                 if bonuses:
                     print("\nAvailable Bonuses:")
@@ -2574,7 +2559,7 @@ class AdminPortal:
                     print("\nNo bonuses configured yet.")
                 input("Press Enter to continue...")
             
-            elif choice == "5":
+            elif choice == "4":
                 bonus_id = safe_string_input("\nBonus ID to delete: ")
                 if not bonus_id:
                     continue
@@ -2593,11 +2578,9 @@ class AdminPortal:
             print(f"\nCurrent Settings:")
             print(f"  Tax Rate: {config.tax_rate}%")
             print(f"  SSS Rate: {config.sss_rate}%")
-            print(f"  Absence Deduction: PHP{config.absence_deduction:.2f}/day")
             
             print("\n1. Set Tax Rate (%)")
             print("2. Set SSS Rate (%)")
-            print("3. Set Absence Deduction (PHP/day)")
             print("0. Back")
             print("-" * 60)
             
@@ -2620,15 +2603,6 @@ class AdminPortal:
                     continue
                 
                 success, msg = self.fee_mgr.set_sss_rate(float(rate))
-                print(f"\n{'✓' if success else '✗'} {msg}")
-                input("Press Enter to continue...")
-            
-            elif choice == "3":
-                amount = safe_int_input("\nAbsence deduction (PHP/day): ", 0)
-                if amount is None:
-                    continue
-                
-                success, msg = self.fee_mgr.set_absence_deduction(float(amount))
                 print(f"\n{'✓' if success else '✗'} {msg}")
                 input("Press Enter to continue...")
     
@@ -2678,11 +2652,11 @@ class AdminPortal:
         print(f"\nTeacher Subjects (all included in payout):")
         for i, subject in enumerate(subjects, 1):
             rate = self.fee_mgr.get_workload_rate(subject)
-            rate_str = f"PHP{rate.rate_per_day:.2f}/day" if rate else "(rate not set)"
+            rate_str = f"PHP{rate.hourly_rate:.2f}/hour" if rate else "(rate not set)"
             print(f"{i}. {subject} - {rate_str}")
         
-        days_present = safe_int_input("Days present (0-14): ", 0, 14)
-        if days_present is None:
+        hours_worked = safe_int_input("Hours worked: ", 0)
+        if hours_worked is None:
             return
         
         overtime = safe_int_input("Overtime hours (0 if none): ", 0)
@@ -2708,7 +2682,7 @@ class AdminPortal:
                     print("Invalid bonus selection.")
         
         success, msg = self.fee_mgr.calculate_payroll(
-            payroll_id, days_present, subjects, selected_bonus_ids, float(overtime)
+            payroll_id, hours_worked, subjects, selected_bonus_ids, float(overtime)
         )
         
         if not success:
@@ -2724,8 +2698,7 @@ class AdminPortal:
             print(f"\nTeacher: {teacher.name}")
             print(f"Period: {breakdown['payout_period']}")
             print(f"\nEarnings:")
-            print(f"  Base Salary: PHP{breakdown['base_salary']:.2f}")
-            print(f"  Workload ({days_present} days): PHP{breakdown['workload_earnings']:.2f}")
+            print(f"  Workload ({hours_worked}h): PHP{breakdown['workload_earnings']:.2f}")
             if breakdown['overtime_earnings'] > 0:
                 print(f"  Overtime ({overtime}h): PHP{breakdown['overtime_earnings']:.2f}")
             if breakdown['bonus_amount'] > 0:
@@ -2737,8 +2710,6 @@ class AdminPortal:
                 print(f"  Tax: PHP{breakdown['tax_deduction']:.2f}")
             if breakdown['sss_deduction'] > 0:
                 print(f"  SSS: PHP{breakdown['sss_deduction']:.2f}")
-            if breakdown['absence_deduction'] > 0:
-                print(f"  Absence ({14 - days_present} days): PHP{breakdown['absence_deduction']:.2f}")
             print(f"  Total Deductions: PHP{breakdown['total_deductions']:.2f}")
             
             print(f"\nNet Salary: PHP{breakdown['net_salary']:.2f}")
