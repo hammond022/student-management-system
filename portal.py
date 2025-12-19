@@ -10,6 +10,7 @@ from student_management import (StudentManager, DisciplineManager,
 from teacher_management import TeacherManager
 from communication import CommunicationManager
 from fee_management import FeeManager
+from faculty_evaluation import FacultyEvaluationManager
 import hashlib
 import pickle
 
@@ -37,6 +38,7 @@ class UserPortal:
         self.discipline_mgr = DisciplineManager(self.student_mgr)
         self.archive_mgr = AcademicArchiveManager(self.student_mgr)
         self.exam_mgr = ExamScheduleManager()
+        self.eval_mgr = FacultyEvaluationManager()
         self.accounts = self._load_accounts()
         self.current_user = None
         self.current_role = None
@@ -387,6 +389,7 @@ class UserPortal:
         print("5. View Exam Schedules")
         print("6. View Academic History")
         print("7. Change Password")
+        print("8. Evaluate a Teacher")
         print("0. Logout")
         print("\n" + "-" * 60)
     
@@ -535,6 +538,39 @@ class UserPortal:
         print("✓ Password changed successfully.")
         input("Press Enter to continue...")
     
+    def student_evaluate_teacher(self):
+
+        print_section("EVALUATE A TEACHER")
+        teachers = self.teacher_mgr.list_teachers()
+        if not teachers:
+            print("\nNo teachers available.")
+            input("Press Enter to continue...")
+            return
+
+        print("\nTeachers:")
+        for i, teacher in enumerate(teachers, 1):
+            print(f"{i}. {teacher.name} ({teacher.teacher_id})")
+
+        choice = safe_int_input("\nSelect teacher: ", 1, len(teachers))
+        if choice is None:
+            return
+
+        teacher = teachers[choice - 1]
+
+        rating = safe_int_input("Rating (1-5): ", 1, 5)
+        if rating is None:
+            return
+
+        comment = safe_string_input("Comment (optional): ")
+
+        eval_id = self.eval_mgr.add_evaluation(self.current_id, teacher.teacher_id, rating, comment)
+        if eval_id:
+            print(f"\n✓ Evaluation submitted. ID: {eval_id}")
+        else:
+            print("\n✗ Failed to submit evaluation. Rating must be 1-5.")
+
+        input("Press Enter to continue...")
+
     def student_view_discipline(self):
         """View disciplinary records and commendations"""
         clear_screen()
@@ -667,6 +703,7 @@ class UserPortal:
         print("2. Input Grades")
         print("3. Input Attendance")
         print("4. Change Password")
+        print("5. View My Evaluations")
         print("0. Logout")
         print("\n" + "-" * 60)
     
@@ -874,7 +911,30 @@ class UserPortal:
         print("✓ Password changed successfully.")
         input("Press Enter to continue...")
 
-    def parent_main_menu(self):
+    def teacher_view_evaluations(self):
+
+        print_section("MY EVALUATIONS")
+        evals = self.eval_mgr.get_evaluations_for_teacher(self.current_id)
+
+        if not evals:
+            print("\nNo evaluations yet.")
+            input("Press Enter to continue...")
+            return
+
+        avg = self.eval_mgr.get_average_rating(self.current_id)
+        print(f"\nTotal evaluations: {len(evals)}")
+        if avg is not None:
+            print(f"Average rating: {avg:.2f}")
+
+        print("\nRecent evaluations:")
+        for e in sorted(evals, key=lambda x: x.date, reverse=True):
+            print(f"\nDate: {e.date}")
+            print(f"From: {e.student_id}")
+            print(f"Rating: {e.rating}")
+            if e.comment:
+                print(f"Comment: {e.comment}")
+
+        input("\nPress Enter to continue...")
 
         clear_screen()
         print_header(f"PARENT PORTAL - {self.current_user}")
@@ -1431,6 +1491,8 @@ class UserPortal:
                 self.student_view_academic_history()
             elif choice == "7":
                 self.student_change_password()
+            elif choice == "8":
+                self.student_evaluate_teacher()
             else:
                 print("Invalid option.")
                 input("Press Enter to continue...")
@@ -1454,6 +1516,8 @@ class UserPortal:
                 self.teacher_input_attendance()
             elif choice == "4":
                 self.teacher_change_password()
+            elif choice == "5":
+                self.teacher_view_evaluations()
             else:
                 print("Invalid option.")
                 input("Press Enter to continue...")
